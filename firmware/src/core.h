@@ -421,7 +421,8 @@ typedef struct track {
     uint8_t rh_last;             /* the last of them; rh_bak: what it held (an early release puts it back) */
     uint32_t rh_last_abs;        /* (its step of the transport grid) */
     step_t rh_bak;
-    uint8_t rh_end;              /* (SLOOP 2.7.1) one of them let go, others still held: the next step, only those go on */
+    step_t rh_put;               /* (2.8.2) what the hold wrote into rh_last (an early release puts rh_bak back only over it) */
+    uint8_t rh_end;              /* (2.7.1) one of them let go, others still held: the next step, only those go on */
     uint8_t rh_rs;               /* (2.7.1) rh_start is such a step (rh_last, rh_last_abs: it) */
     uint8_t rh_offn, rh_off[4];  /* (2.7.1) the ones let go since the hold's last NOTE step (they end there) */
     uint32_t pass;               /* loops played since PLAY (a recording pass: one undo) */

@@ -214,8 +214,12 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
     uint32_t i, np = trk_nvoice(t), best = np, low = np, nfree = 0;
     int32_t bd = 0x7FFFFFFF;
     for (i = 0; i < np; i++) {
-        if (t->v[i].active && t->v[i].note == note)
+        if (t->v[i].active && t->v[i].note == note) {
+            if (t->v[i].stage == 4u && voices_busy() >= NVOICE)
+                voice_room(t, 0);                       /* (2.8.2) a voice fading out (given up) sounds again: within the
+                                                         * budget of NVOICE, as a new one (after Melodee's voice_reuse) */
             return &t->v[i];
+        }
         nfree += !t->v[i].active;
     }
     if (nfree && voices_busy() >= NVOICE) {
