@@ -39,6 +39,16 @@ static int32_t lfo_wave(track_t *t, uint32_t ph)
     return lfo_wave_n(t->p[P_LWAVE], ph, (int32_t)(t->lfo_rnd >> 16) - 32768);
 }
 
+static uint8_t midi_breath;                             /* (1.0) GLO > MIDI 2 > EWI (seq.c): 0 OFF, 1 VOL, 2 V+AT */
+/* (1.1, the EWI player again: "a soft note adds a second one, at full level") an EWI is a monophonic instrument and
+ * its breath is the level: with EWI on, the instrument (and its LAYER) plays one note at a time, legato, whatever
+ * the sound's VOICE (a note fingered over the last one moves it, no second voice); the notes' velocity is fixed
+ * (seq.c), the breath alone shapes the level */
+static inline uint32_t voice_mode(const track_t *t)
+{
+    return CLIPPER_SYNTH && midi_breath && (uint32_t)(t - trk) < NPART && ctl_part(t) == 0u ? (uint32_t)V_LEGATO
+                                                                                   : (uint32_t)t->p[P_VOICE];
+}
 static uint8_t midi_bend;                               /* (1.0) GLO > MIDI > BEND, or RPN 0 (seq.c): the pitch bend's
                                                          * range in semitones, 0 AUTO (the HYBRID patch's, else 2) */
 #if CLIPPER_SYNTH
@@ -112,7 +122,7 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
     uint32_t p, i, best = NVOICE, cat = 4;
     for (p = 0; p < NPART; p++) {
         track_t *t = &trk[p];
-        uint32_t mode = (uint32_t)t->p[P_VOICE], nu = mode == V_UNISON ? trk_nvoice(t) : 1u;
+        uint32_t mode = voice_mode(t), nu = mode == V_UNISON ? trk_nvoice(t) : 1u;
         uint32_t low = voice_poly((int)mode) ? lowest_held(t) : NVOICE;
         if (soft && t == self)
             continue;
@@ -174,7 +184,7 @@ static void shed_voice(void)
     }
     for (p = 0; p < NPART; p++) {
         const track_t *t = &trk[p];
-        uint32_t mode = (uint32_t)t->p[P_VOICE], low = voice_poly((int)mode) ? lowest_held(t) : 0u;
+        uint32_t mode = voice_mode(t), low = voice_poly((int)mode) ? lowest_held(t) : 0u;
         for (i = 0; i < NVOICE; i++) {
             voice_t *v = &trk[p].v[i];
             if (v->active && v->gate && v->stage != 4u &&
@@ -216,7 +226,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
     for (i = 0; i < np; i++) {
         if (t->v[i].active && t->v[i].note == note) {
             if (t->v[i].stage == 4u && voices_busy() >= NVOICE)
-                voice_room(t, 0);                       /* (2.8.3) a voice fading out (given up) sounds again: within the
+                voice_room(t, 0);                       /* (SLOOP 2.8.3) a voice fading out (given up) sounds again: within the
                                                          * budget of NVOICE, as a new one (after Melodee's voice_reuse) */
             return &t->v[i];
         }
@@ -393,7 +403,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
  * engine's voice cap, spread by DETUNE over the same width) */
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
-    uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    uint32_t mode = voice_mode(t), nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
@@ -524,7 +534,7 @@ static volatile uint8_t vis_hit, vis_kick_hit, vis_note[NTRK];
 
 static void trk_note_on1(track_t *t, uint32_t note, uint32_t vel)
 {
-    uint32_t any = 0, i, mode = (uint32_t)t->p[P_VOICE];
+    uint32_t any = 0, i, mode = voice_mode(t);
     if (trk_silent(t))
         return;                                         /* MUTE, or another track soloed */
     vis_hit |= (uint8_t)(1u << ((uint32_t)(t - trk) & 3u));
@@ -598,7 +608,7 @@ static void strum_cancel(const track_t *t, uint32_t note, int all)
 }
 static void trk_note_off1(track_t *t, uint32_t note)
 {
-    uint32_t i, k = 0, mode = (uint32_t)t->p[P_VOICE];
+    uint32_t i, k = 0, mode = voice_mode(t);
     if (is_drum(t))
         return;                                         /* one-shots */
     strum_cancel(t, note, 0);
@@ -664,7 +674,7 @@ static void trk_all_off1(track_t *t)
         t->v[i].gate = 0;
         t->v[i].sus = 0;
         t->v[i].stage = t->v[i].active ? 3 : 0;
-        t->v[i].pend = 0;                               /* (2.8.3: a note waiting for its voice's fade: gone too) */
+        t->v[i].pend = 0;                               /* (SLOOP 2.8.3: a note waiting for its voice's fade: gone too) */
     }
     t->nmono = 0;
     t->mono_note = 0;
@@ -1301,7 +1311,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             if (voice_room(t, 0)) {                     /* (it was not counted while fading: within the budget) */
                 voice_start(t, v, v->pend_note, v->pend_vel, (pf & VP_GLIDE) != 0);
                 if (pf & VP_OFF) {                      /* let go within the fade (~1.5 ms): released as it starts, */
-                    if (voice_poly((int)t->p[P_VOICE]) &&   /* or held by the sustain pedal */
+                    if (voice_poly((int)voice_mode(t)) &&     /* or held by the sustain pedal */
                         part_ctl[CLIPPER_SYNTH ? ctl_part(t) : (uint32_t)(t - trk) % NPART].sus)
                         v->sus = 1;
                     else {

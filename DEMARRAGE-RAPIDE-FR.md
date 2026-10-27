@@ -1,8 +1,8 @@
-# Clipper — démarrage rapide (version 1.1 expérimentale)
+# Clipper — démarrage rapide (version 1.2)
 
 **Clipper** est un firmware de **synthétiseur** pour le M-VAVE FM-1 : un seul instrument, comme le firmware d'origine, Felucca ou Baudgirl. Ce n'est plus une groovebox : pas de pistes, pas de boîte à rythmes, pas de mode song, pas de samples intégrés. Il garde de SLOOP les 12 moteurs, les effets, l'arpégiateur, le séquenceur de pas, l'audio USB et le MIDI. Il ajoute **HYBRID**, une voix à 3 oscillateurs, 2 filtres et une matrice de modulation de 16 slots, avec 32 sons d'usine. Il ajoute aussi le pitch bend, la molette, l'aftertouch et la pédale de sustain sur tous les moteurs.
 
-> **Version 1.1 EXPÉRIMENTALE.** C'est une version jeune et expérimentale, et il reste énormément de travail à faire (voir [Ce qui reste à faire](#ce-qui-reste-à-faire)). Elle passe toute sa suite de tests sur ordinateur, mais elle a encore très peu tourné sur une vraie FM-1 : attends-toi à des défauts. Avant d'installer, fais une **sauvegarde** dans l'éditeur (celui de Clipper ou de SLOOP, selon ce qui est installé) : onglet Backup (Projects → Backup dans SLOOP ou une ancienne version) → *Save a backup*.
+> **Version 1.2.** Clipper tourne sur la FM-1 ; la 1.2 apporte les correctifs de SLOOP 2.8.3 (voir [Nouveau dans la 1.2](#nouveau-dans-la-12--les-correctifs-de-sloop-283-un-second-cœur-plus-solide-lewi-sur-une-voix)), et il reste beaucoup à faire (voir [Ce qui reste à faire](#ce-qui-reste-à-faire)). Avant d'installer, fais une **sauvegarde** dans l'éditeur (celui de Clipper ou de SLOOP, selon ce qui est installé) : onglet Backup (Projects → Backup dans SLOOP ou une ancienne version) → *Save a backup*.
 
 ## En bref
 
@@ -18,9 +18,9 @@
 
 ## Ce qui reste à faire
 
-La 1.1 est expérimentale. Ce dont elle a le plus besoin, à peu près dans l'ordre :
+Ce dont Clipper a le plus besoin, à peu près dans l'ordre :
 
-- **Des tests sur la FM-1.** Tout ce qui est nouveau dans la 1.0 et la 1.1 n'a été mesuré que sur ordinateur. La charge processeur sur la FM-1 (SPREAD, SHIMMER, 8 voix sur les deux cœurs ; 12 et 16 voix), la flash et la RAM du vrai firmware compilé, les clics ou craquements que seul le matériel montre, les presets utilisateur après une coupure de courant : tout ça doit être vérifié sur de vraies machines (voir la section 5).
+- **Encore des tests sur la FM-1.** La charge processeur sur la FM-1 (SPREAD, SHIMMER, 8 voix sur les deux cœurs ; 12 et 16 voix), la flash et la RAM du vrai firmware compilé, les clics ou craquements que seul le matériel montre, les presets utilisateur après une coupure de courant : tout ça continue d'être vérifié sur de vraies machines (voir la section 5) : signale ce que tu trouves.
 - **Plus de place pour tes propres sons.** La banque de patchs FM6 / FMX a 27 emplacements, même pas une banque DX7 entière (32 voix). La flash libérée par les samples et les projets (environ 300 Ko) pourrait accueillir 32 banques de 32 voix ; le format, la page de l'éditeur et la façon de les choisir sur la FM-1 restent à faire.
 - **Les sons.** Les presets d'usine utilisent à peine ce que la 1.0 a ajouté (les macros, le LFO 3, ENV 2 LOOP, les slots 7 à 12, PING / TAPE, HALL / SHIMMER). Une passe de sound design sur les 407 sons est à faire, et les macros sont à régler moteur par moteur.
 - **L'éditeur.** Il montre tous les paramètres, mais certaines choses méritent leur propre page (une matrice de modulation visuelle, un gestionnaire de banques SysEx). Il a été beaucoup moins utilisé avec la 1.0 qu'avec la 0.9.
@@ -39,7 +39,7 @@ Clipper vit dans son propre dossier, **`CLIPPER`**, à côté de celui de SLOOP.
 | Adresse | http://localhost:**8766** | http://localhost:**8767** |
 | Écran de démarrage | voilier, « sloop » | trois-mâts, « clipper » |
 
-Sur la FM-1, Clipper se reconnaît à son écran de démarrage (**1.1 EXPERIMENTAL** sous le logo) et à HOME (maintenu) → SYS → ABOUT, qui affiche **CLIPPER 1.1 EXP**.
+Sur la FM-1, Clipper se reconnaît à son écran de démarrage (**1.2** sous le logo) et à HOME (maintenu) → SYS → ABOUT, qui affiche **CLIPPER 1.2**.
 
 ## 1. Compiler et installer
 
@@ -52,7 +52,18 @@ Sur la FM-1, Clipper se reconnaît à son écran de démarrage (**1.1 EXPERIMENT
 3. La page d'installation s'ouvre sur http://localhost:8767/webapp/installer/ (Chrome ou Edge, FM-1 en USB). Clique sur **Install**.
 4. La FM-1 redémarre sur l'écran **clipper**. Tes projets, presets, samples et réglages de SLOOP sont toujours là.
 
-## Nouveau dans la 1.1 (expérimentale) : un MIDI ultra-compatible, le séquenceur de SLOOP 2.7.2, et une réverb propre
+## Nouveau dans la 1.2 : les correctifs de SLOOP 2.8.3, un second cœur plus solide, l'EWI sur une voix
+
+- **Une note tenue sous les autres continue de sonner** (d'après SLOOP 2.8.2 et 2.8.3) : une touche tenue pendant que tu joues ou enregistres par-dessus n'est plus jamais relancée ni coupée par le séquenceur, en direct, en prise libre ou en overdub, en POLY et en UNI2 / UNI4 ; une tenue enregistrée par-dessus une mélodie continue à travers ses notes, et les notes tenues par la pédale de sustain sont laissées tranquilles aussi. Enregistrer une touche par-dessus une note tenue sur un son MONO ou LEGATO affiche **MONO: SET VOICE POLY** (une fois).
+- **SEQ > NOTES : LEN sous les notes suivantes** : la durée d'une note peut continuer sous les notes d'après (une longue basse sous une mélodie, programmée) ; les notes d'un accord et DELETE suivent.
+- **Plus de notes coincées quand le MIDI arrive trop vite** : quand un message de note ne rentre pas, les notes tenues par le MIDI sont arrêtées une fois ce qui est arrivé lu.
+- **SAMPLE et GRAIN : un sample rejoué repart du silence avec son ATK** : plus de clic quand une note est rejouée en MONO, LEGATO ou UNISON, ou la même note en POLY.
+- **Plus de plantage sur FMX quand ALG passe 32** (FM KICK et les autres sons FMX : l'écran lisait au-delà d'une liste de noms et affichait FELUCCA CRASH).
+- **Le second cœur, plus solide** : une sauvegarde par USB pouvait planter une FM-1 sur deux cœurs (écran rouge jusqu'à l'extinction). Chaque tâche du cœur 1 est maintenant vérifiée : une tâche fausse est refusée et la FM-1 continue sur un cœur jusqu'à l'extinction, et une faute à côté du cœur 1 ne la fige plus. Si une machine le fait encore : HOME (maintenu) → SYS → 2ND CORE OFF.
+- **Un appui rapide ne fait plus clignoter une couche** : SEQ, EDIT, ARP et GLO maintenus montrent leur couche après 0,35 s (au lieu de 0,14 s), donc un appui ouvre les pages proprement.
+- **L'EWI joue sur une voix** : avec GLO > MIDI 2 > EWI activé, l'instrument joue une note à la fois, legato, quel que soit son VOICE (un EWI est monophonique : une note douce n'ajoute plus une seconde note à plein volume) ; la vélocité des notes est fixe et seul le souffle règle le volume. (Demandé par un joueur d'EWI.)
+
+## Nouveau dans la 1.1 : un MIDI ultra-compatible, le séquenceur de SLOOP 2.7.2, et une réverb propre
 
 - **Corrigé : le craquement à gauche avec la réverb** (entendu par plusieurs joueurs, absent du firmware d'origine). **PLATE, HALL et SHIMMER** lisaient une de leurs prises de sortie gauche 1417 échantillons en arrière sur une ligne de 1334 : en dehors de la ligne, un clic toutes les 60 ms, à gauche seulement (les prises de droite étaient toutes dedans). ROOM ne l'avait pas. Un second cas est corrigé aussi : **la réverb ROOM débordait** avec DAMP baissé (sous ~35) et un son fort (LEVEL et REV montés, un accord), et sa traîne devenait un craquement à pleine échelle qui continuait après les notes. Le mixage et le master sont protégés de la même façon. Tous les autres effets ont été vérifiés (`tests/fx_sweep_test.c` : une sinusoïde dans chaque réverb, chaque MODE et TIME du delay, le chorus, les INSERT, le chorus JUNO et le master, à leurs extrêmes) : aucun n'avait ce bug. Si un bruit reste, les tests qui disent d'où il vient sont plus bas (Un bruit d'un seul côté ?).
 - **Fait pour les contrôleurs MIDI et les DAW** (la liste complète : [docs/midi-fr.md](docs/midi-fr.md)) : les **program changes** chargent les sons (avec la **banque**, CC 0 : le programme *p* de la banque *b* est le son *b* × 128 + *p* de la liste ; GLO > MIDI 2 > PROG les coupe) ; le **CC 11 expression** est le volume du son ; les **CC 120 / 123** arrêtent toutes les notes (le bouton panic d'un DAW), le **CC 121** remet les contrôleurs à zéro ; l'**amplitude du pitch bend** est GLO > MIDI > **BEND** (AUTO, ou 1 à 24 demi-tons) et le **RPN 0** la règle ; **LOCAL** OFF (et le CC 122) pour un DAW qui renvoie la piste ; les **CC 76 / 77 / 78** la vitesse, le vibrato et le fade du LFO ; GLO > MIDI 2 > **SEND CC** : les knobs envoient leurs CC, un DAW enregistre et rejoue les mouvements ; GLO > MIDI 2 > **EWI** : un **contrôleur de souffle** (CC 2) joue le volume, et avec V+AT l'aftertouch aussi (la coupure suit le souffle ; demandé par un joueur d'EWI) ; Clipper répond à la **MIDI identity request**. Les knobs ne sautent plus de crans quand on les tourne vite (l'encodeur de SLOOP 2.7.2).
@@ -63,7 +74,7 @@ Sur la FM-1, Clipper se reconnaît à son écran de démarrage (**1.1 EXPERIMENT
 - **Les sons d'usine se chargent sans effets** : plus d'envoi vers le délai ni la réverb (demandé par les utilisateurs) ; FX > DLY / REV, ou la macro SPACE, les ajoutent, et tes presets utilisateur gardent ce que tu as enregistré.
 - **A4 en Hz** (GLO → TUNING → **A4**, de 400 à 480 Hz, et dans la carte Tuning de l'éditeur) : 432, 415 (baroque), 442 / 443 (orchestres)… sous tous les systèmes d'accordage, gardé avec les réglages. (Demandé dans un commentaire de la vidéo de lancement.)
 
-## Nouveau dans la 1.0 (expérimentale) : une voix stéréo, plus de modulation, quatre macros, un hall et un shimmer
+## Nouveau dans la 1.0 : une voix stéréo, plus de modulation, quatre macros, un hall et un shimmer
 
 - **SPREAD** (VOICE 3 → **SPRED**, tous les moteurs) : chaque voix a sa place entre gauche et droite (les voix extérieures d'abord, les suivantes entre elles) : un accord s'ouvre dans la stéréo, les voix de UNI2 / UNI4 s'écartent. Le centre ne change pas (gauche + droite = le son sans SPREAD, au bit près à 0). Les nappes et les sons en unisson en ont un peu d'origine (48).
 - **La matrice a 12 slots** (MATRIX 1 à 12, sur la FM-1 et dans l'éditeur) et de nouvelles sources : **LFO 3** (page LFO 3 : RATE, WAVE, MODE FREE / KEY) et les quatre macros **MAC1 à MAC4**.

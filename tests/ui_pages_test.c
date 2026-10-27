@@ -194,15 +194,15 @@ int main(int argc, char **argv)
     go_home(); frame();
     tap(B_FX); check(cur_fam() == FAM_FX, "FX tapped: the FX pages");
     go_home(); frame();
-    {   /* (2.8.3) a tap of 0.3 s: the layer never shows on the way (it used to flash after 0.14 s) */
+    {   /* (SLOOP 2.8.3) a tap of 0.3 s: the layer never shows on the way (it used to flash after 0.14 s) */
         uint32_t f, shown = 0;
         press(B_FX);
         for (f = 0; f < 18u; f++) { frame(); shown |= ui.layer == LY_FX; }
         release(B_FX); frame();
-        check(!shown && cur_fam() == FAM_FX, "2.8.3: FX tapped in 0.3 s: no flash of the layer, the FX pages");
+        check(!shown && cur_fam() == FAM_FX, "SLOOP 2.8.3: FX tapped in 0.3 s: no flash of the layer, the FX pages");
     }
     go_home(); frame();
-    press(B_FX); frames(24); check(ui.layer == LY_FX && punch.hold, "FX held: the punch layer shows");   /* (2.8.3: after 0.35 s) */
+    press(B_FX); frames(24); check(ui.layer == LY_FX && punch.hold, "FX held: the punch layer shows");   /* (SLOOP 2.8.3: after 0.35 s) */
     check(keys_guide() == (1u << key_of_white(0) | 1u << key_of_white(4) | 1u << key_of_white(8) | 1u << key_of_white(12)),
           "FX held: keys 1, 5, 9, 13 lit dim (the rows of the grid)");
     ppm("layer-punch");
@@ -442,7 +442,7 @@ int main(int argc, char **argv)
     /* ---- SAVE: tap = the song page; held = the SONG layer (live sections, SONG REC) */
     go_home(); frame();
     song.playing = 0; live_sec = -1; live_req = -1; srec = 0; arrangement_enabled = 0;
-    press(B_SAVE); frames(24); check(ui.layer == LY_SONG, "SAVE held: the song layer");   /* (2.8.3: after 0.35 s) */
+    press(B_SAVE); frames(24); check(ui.layer == LY_SONG, "SAVE held: the song layer");   /* (SLOOP 2.8.3: after 0.35 s) */
     key(key_of_white(4)); check(sec_stores == 0 && sec_armed == 1u, "store over a used A: asks again");
     key(key_of_white(4)); check(sec_stores == 1 && live_sec == 0, "again: the loop stored in A");
     key(key_of_white(6)); check(sec_stores == 2 && live_sec == 2, "an empty C: stored at once");

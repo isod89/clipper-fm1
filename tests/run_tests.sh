@@ -66,14 +66,14 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/studio_drums_test" tests/studio_d
 run "drum lanes, kit audio, metronome, record arm, free take" "$OUT/studio_drums_test" "$OUT/drum-styles.wav"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq2_test" tests/seq2_test.c -lm
 run "sequencer 2.0: no drift, ratchets, roll, erase / undo, ghost / hard, chords, mute / solo, nudge, locks" "$OUT/seq2_test"
-$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/hold_rec_test" tests/hold_rec_test.c -lm
-run "2.8.3: a note held under others (live, recorded, overdubbed, free take), MIDI in overflow" "$OUT/hold_rec_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/hold_rec_test" tests/hold_rec_test.c -lm
+run "SLOOP 2.8.3: a note held under others (live, recorded, overdubbed, free take), MIDI in overflow" "$OUT/hold_rec_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/len_test" tests/len_test.c -lm
-run "2.8.3: SEQ > NOTES, LEN under later notes, MONO / STEP FULL, shorter, delete" "$OUT/len_test"
+run "SLOOP 2.8.3: SEQ > NOTES, LEN under later notes, MONO / STEP FULL, shorter, delete" "$OUT/len_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drum_steal_test" tests/drum_steal_test.c -lm
-run "2.8.3: drum voices on a busy beat, every kit: no kick cut by another sound" "$OUT/drum_steal_test"
+run "SLOOP 2.8.3: drum voices on a busy beat, every kit: no kick cut by another sound" "$OUT/drum_steal_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/chop_attack_test" tests/chop_attack_test.c -lm
-run "2.8.3: a sample played again starts from silence with its ATK (POLY same note, MONO, LEGATO, UNISON), no click" "$OUT/chop_attack_test"
+run "SLOOP 2.8.3: a sample played again starts from silence with its ATK (POLY same note, MONO, LEGATO, UNISON), no click" "$OUT/chop_attack_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.c -lm
 run "synthesised drum kits: every kit x sound bounded, audible, finite, levels, cost" "$OUT/drumkit_test" "$OUT/drum-kits.wav" "$OUT/drum-kits.txt"
@@ -116,9 +116,9 @@ mkdir -p "$OUT/clipper"
 $SYN -o "$OUT/clipper_ui_test" tests/clipper_ui_test.c -lm
 run "Clipper synth: HOME, presets, keys, pages, one track, MIDI omni, no drums / song" "$OUT/clipper_ui_test" "$OUT/clipper"
 $SYN -o "$OUT/clipper_hold_test" tests/hold_rec_test.c -lm
-run "Clipper synth (2.8.3): a note held under others, POLY and UNI2, live / recorded / overdub / free take, MIDI burst" "$OUT/clipper_hold_test"
+run "Clipper synth (SLOOP 2.8.3): a note held under others, POLY and UNI2, live / recorded / overdub / free take, MIDI burst" "$OUT/clipper_hold_test"
 $SYN -o "$OUT/clipper_chop_test" tests/chop_attack_test.c -lm
-run "Clipper synth (2.8.3): a sample played again starts from silence with its ATK, no click" "$OUT/clipper_chop_test"
+run "Clipper synth (SLOOP 2.8.3): a sample played again starts from silence with its ATK, no click" "$OUT/clipper_chop_test"
 $SYN -o "$OUT/clipper_stress" tests/stress_test.c -lm
 run "Clipper synth: stress (hard random use, clean stop)" "$OUT/clipper_stress" "${STRESS_FRAMES:-40000}"
 $SYN -o "$OUT/clipper_soak" tests/soak_test.c -lm

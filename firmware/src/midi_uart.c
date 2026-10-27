@@ -73,7 +73,7 @@ static void um_byte(uint32_t b)
         } else {
             um.drops++;
             if ((um.st & 0xE0u) == 0x80u)
-                midi_in_lost = 1;                  /* (2.8.3: a note lost: seq.c ends the MIDI notes held) */
+                midi_in_lost = 1;                  /* (SLOOP 2.8.3: a note lost: seq.c ends the MIDI notes held) */
         }
     }
 }

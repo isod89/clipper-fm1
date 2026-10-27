@@ -123,8 +123,8 @@ starts, recovery needs [FM-1-transporter](https://github.com/kurogedelic/FM-1-tr
 ## Publishing a release on GitHub
 
 `PUBLISH-GITHUB.bat` (Windows, after `INSTALL-CLIPPER.bat` has built the firmware) publishes from the CLIPPER folder with
-your own Git and GitHub CLI login: the source from `clipper-1.1.bundle` to `YOUR-NAME/clipper-fm1` (created if needed;
-an existing repository with another history stops it, nothing is forced on `main`), the tag and the pre-release
-`v1.1-experimental` (notes: `docs/release-1.1.md`, the `.fwsc` package and the demo WAV attached), and the installer and
+your own Git and GitHub CLI login: the source from `clipper-1.2.bundle` to `YOUR-NAME/clipper-fm1` (created if needed;
+an existing repository with another history stops it, nothing is forced on `main`), the tag and the release
+`v1.2` (notes: `docs/release-1.2.md`, the `.fwsc` package and the demo WAV attached), and the installer and
 the editor (`build/clipper-site`) on GitHub Pages (branch `gh-pages`, replaced each time):
 `https://YOUR-NAME.github.io/clipper-fm1/webapp/installer/`. `PUBLISH-GITHUB.bat -Repo another-name` for another name.

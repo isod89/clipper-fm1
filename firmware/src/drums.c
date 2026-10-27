@@ -179,9 +179,9 @@ static void click_render(int32_t *ml, int32_t *mr, uint32_t n)
         click.env = 0;                                /* (-72 dB: done, about 100 ms) */
 }
 
-/* (2.8.3) the voice for a drum hit: a free voice; all busy, the sound's own voice if it still sounds (it starts over,
+/* (SLOOP 2.8.3) the voice for a drum hit: a free voice; all busy, the sound's own voice if it still sounds (it starts over,
  * as on a drum machine: a 16th hi-hat no longer takes every voice with its own tails); else the oldest, a kick last.
- * Up to 2.8.2 the oldest went whatever it was: on a busy beat (16th hats, ride, crash, snare and clap) the kick lost its
+ * Up to SLOOP 2.8.2 the oldest went whatever it was: on a busy beat (16th hats, ride, crash, snare and clap) the kick lost its
  * voice after a step or two and was cut, or not heard at all (a tester's report, "Heads Will Roll") */
 static voice_t *drum_pick(uint32_t note)
 {
@@ -291,7 +291,7 @@ static void drum_on(uint32_t note, uint32_t vel)
                 drums.v[i].active = 0;
                 drums.tail += drums.v[i].s[7];          /* fade what it was playing, not a step */
             }
-    v = drum_pick(note);                            /* (2.8.3: a free one, its own, else the oldest but a kick) */
+    v = drum_pick(note);                            /* (SLOOP 2.8.3: a free one, its own, else the oldest but a kick) */
     if (v->active)
         drums.tail += v->s[7];                      /* stolen voice: fade its last value */
     v->note = (uint8_t)note;

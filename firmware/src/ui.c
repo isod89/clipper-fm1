@@ -3,7 +3,7 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "CLIPPER 1.1 EXP"  /* (experimental) the synthesizer firmware for the FM-1 (from SLOOP 2.5, based on Felucca) */
+#define FELUCCA_VERSION "CLIPPER 1.2"  /* the synthesizer firmware for the FM-1 (from SLOOP 2.5, based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
@@ -152,11 +152,11 @@ static uint32_t note_set_len(track_t *t, uint32_t i, uint32_t want)
     }
     return n;
 }
-/* ---- (2.8.3) LEN under later notes ----
+/* ---- (SLOOP 2.8.3) LEN under later notes ----
  * POLY: a note's LEN runs on under the notes after it: it joins their steps as a note going on (SF_CONT, as a
  * recording over held notes writes it, seq.c rec_hold), 4 notes a step at most; after them, a NOTE of its notes only,
  * all going on, carries it (the others end there). A long bass under a melody, programmed. MONO / LEGATO parts play one
- * note at a time: it stops there and says so. The step format is 2.7's: a project of 2.8.3 opens in 2.7 and later.
+ * note at a time: it stops there and says so. The step format is 2.7's: no project change.
  * The work: seq.c span_len / span_set (a free take uses them too); span_why: why it stopped short */
 UI_SMALL static uint32_t note_span(const track_t *t, uint32_t i)   /* LEN: the steps step i's notes sound */
 {
@@ -307,11 +307,11 @@ UI_SMALL static void note_del(track_t *t, uint32_t i, uint32_t k)   /* one note 
     if (!step_on(st))
         return;
     if (st->n <= 1u) {
-        note_span_set(t, i, 1);                         /* (its TIEs: RESTs; 2.8.3: where it went on under others, out) */
+        note_span_set(t, i, 1);                         /* (its TIEs: RESTs; SLOOP 2.8.3: where it went on under others, out) */
         step_clear(st);
         return;
     }
-    {   /* (2.8.3) one note of a chord: the chord back to one step, then the others as long again (its going on: gone) */
+    {   /* (SLOOP 2.8.3) one note of a chord: the chord back to one step, then the others as long again (its going on: gone) */
         uint32_t w = note_span(t, i);
         if (w > 1u && w != note_len(t, i)) {
             note_span_set(t, i, 1);
@@ -339,7 +339,7 @@ static int32_t note_shift(track_t *t, uint32_t i, int32_t dir, int copy)
 {
     uint32_t len = trk_len(t), n = note_len(t, i), j, to;
     if (!step_on(&t->step[i]) || note_span(t, i) != n)
-        return -1;                                      /* (2.8.3: one going on under later notes: LEN 1 first) */
+        return -1;                                      /* (SLOOP 2.8.3: one going on under later notes: LEN 1 first) */
     to = copy ? i + n : dir > 0 ? i + 1u : i - 1u;
     if ((!copy && dir < 0 && i == 0u) || to + n > len)
         return -1;

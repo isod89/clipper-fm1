@@ -1,5 +1,5 @@
 /* SLOOP 2.8.3: drum voices on a busy beat (kick on the beat, 16th hats, open hats, snare + clap, crash, ride, a tom
- * fill), every kit: no kick is cut short by another sound taking its voice (NDRUM voices; up to 2.8.2 the oldest went,
+ * fill), every kit: no kick is cut short by another sound taking its voice (NDRUM voices; up to SLOOP 2.8.2 the oldest went,
  * kick or not: 11 to 13 kicks of 16 cut on the 808, GM and AMBIENT kits; a tester's report). A kick re-hit while it
  * still sounds may take its own voice (as on a drum machine). Exit status: the kits that fail */
 #define FELUCCA_ARRANGER 1

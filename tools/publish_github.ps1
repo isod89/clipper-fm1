@@ -1,18 +1,18 @@
 # Clipper: publish the release on GitHub, from this folder (PUBLISH-GITHUB.bat).
-#   1. the source: clipper-1.1.bundle -> the repository OWNER/REPO (created if it does not exist), branch main, the tag
-#   2. the pre-release v1.1-experimental: docs/release-1.1.md, the firmware package (if INSTALL-CLIPPER.bat built it),
+#   1. the source: clipper-1.2.bundle -> the repository OWNER/REPO (created if it does not exist), branch main, the tag
+#   2. the release v1.2 (the latest): docs/release-1.2.md, the firmware package (if INSTALL-CLIPPER.bat built it),
 #      the demo WAV
 #   3. the installer and the editor on GitHub Pages (branch gh-pages, from build\clipper-site)
 # Uses your own Git and GitHub CLI (gh) and your own GitHub login. Nothing is ever forced on main: a repository that
 # already has another history stops the script. gh-pages is generated: it is replaced each time.
-param([string]$Owner = "", [string]$Repo = "clipper-fm1", [string]$Tag = "v1.1-experimental")
+param([string]$Owner = "", [string]$Repo = "clipper-fm1", [string]$Tag = "v1.2")
 $ErrorActionPreference = 'Continue'
 Set-Location (Split-Path $PSScriptRoot)
 function Fail([string]$m) { Write-Host ""; Write-Host "ERROR: $m" -ForegroundColor Red; exit 1 }
 function Step([string]$m) { Write-Host "== $m" -ForegroundColor Cyan }
 
 Write-Host ""
-Write-Host "  C L I P P E R   1.1   EXPERIMENTAL   ->   GitHub" -ForegroundColor White
+Write-Host "  C L I P P E R   1.2   ->   GitHub" -ForegroundColor White
 Write-Host "  ---- ---- ---- ----" -ForegroundColor DarkGray
 # Git and GitHub CLI: on the PATH, else where their installers put them, else installed now with winget (asked first)
 function Find-Tool([string]$t) {
@@ -52,7 +52,7 @@ if (-not $Owner) { $Owner = "$(gh api user --jq .login)".Trim() }
 if (-not $Owner) { Fail "could not read your GitHub user name" }
 $full = "$Owner/$Repo"
 $pages = "https://$Owner.github.io/$Repo"
-$bundle = "clipper-1.1.bundle"
+$bundle = "clipper-1.2.bundle"
 if (-not (Test-Path $bundle)) { Fail "$bundle not found in this folder" }
 $work = Join-Path "build" "publish"
 $repoDir = Join-Path $work "repo"
@@ -68,7 +68,7 @@ Push-Location $repoDir
 gh repo view $full *> $null
 if ($LASTEXITCODE -ne 0) {
   Step "Creating the public repository $full"
-  gh repo create $full --public --description "Clipper: an experimental synthesizer firmware for the M-VAVE FM-1 (from SLOOP, based on Felucca)" --homepage "$pages/webapp/installer/"
+  gh repo create $full --public --description "Clipper: a synthesizer firmware for the M-VAVE FM-1 (from SLOOP, based on Felucca)" --homepage "$pages/webapp/installer/"
   if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "creating the repository $full" }
 }
 git remote remove origin *> $null
@@ -82,18 +82,18 @@ if ($LASTEXITCODE -ne 0) {
 if ("$(git ls-remote --tags origin "refs/tags/$Tag")".Trim()) {
   Write-Host "   (the tag $Tag is already on GitHub: kept as it is)" -ForegroundColor DarkGray
 } else {
-  git -c user.name="$Owner" -c user.email="$email" tag -a $Tag -m "Clipper 1.1 (experimental)"
+  git -c user.name="$Owner" -c user.email="$email" tag -a $Tag -m "Clipper 1.2"
   git push origin $Tag
   if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "pushing the tag $Tag" }
 }
 $notes = Join-Path (Resolve-Path "..").Path "release-notes.md"
-$src = Join-Path "docs" "release-1.1.md"
-if (-not (Test-Path $src)) { Pop-Location; Fail "docs/release-1.1.md is missing from the bundle (an older bundle?)" }
+$src = Join-Path "docs" "release-1.2.md"
+if (-not (Test-Path $src)) { Pop-Location; Fail "docs/release-1.2.md is missing from the bundle (an older bundle?)" }
 $text = (Get-Content -Raw -Encoding UTF8 $src).Replace("https://isod89.github.io/clipper-fm1", $pages).Replace("isod89/clipper-fm1", $full)
 [IO.File]::WriteAllText($notes, $text, (New-Object Text.UTF8Encoding $false))   # (no BOM: GitHub shows the text as it is)
 Pop-Location
 
-# 2. the pre-release
+# 2. the release
 $site = Join-Path "build" "clipper-site"
 $assets = @()
 $fw = Get-ChildItem (Join-Path (Join-Path $site "firmware") "clipper-*.fwsc") -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -103,11 +103,11 @@ if (Test-Path "clipper-1.0-demo.wav") { $assets += (Resolve-Path "clipper-1.0-de
 gh release view $Tag --repo $full *> $null
 if ($LASTEXITCODE -eq 0) {
   Step "The release $Tag exists: updating its notes and files"
-  gh release edit $Tag --repo $full --prerelease --title "Clipper 1.1 (experimental)" --notes-file $notes
+  gh release edit $Tag --repo $full --prerelease=false --latest --title "Clipper 1.2" --notes-file $notes
   if ($assets.Count -gt 0) { gh release upload $Tag @assets --repo $full --clobber }
 } else {
-  Step "Creating the pre-release $Tag"
-  gh release create $Tag @assets --repo $full --prerelease --title "Clipper 1.1 (experimental)" --notes-file $notes
+  Step "Creating the release $Tag"
+  gh release create $Tag @assets --repo $full --latest --title "Clipper 1.2" --notes-file $notes
 }
 if ($LASTEXITCODE -ne 0) { Fail "the release $Tag" }
 
@@ -122,7 +122,7 @@ if (Test-Path (Join-Path (Join-Path (Join-Path $site "webapp") "installer") "ind
   git init --quiet
   git checkout --quiet -b gh-pages
   git add -A
-  git -c user.name="$Owner" -c user.email="$email" commit --quiet -m "Clipper 1.1 (experimental): the installer and the editor"
+  git -c user.name="$Owner" -c user.email="$email" commit --quiet -m "Clipper 1.2: the installer and the editor"
   git push --force "https://github.com/$full.git" gh-pages
   $ok = $LASTEXITCODE -eq 0
   Pop-Location

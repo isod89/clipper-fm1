@@ -7,7 +7,7 @@ Free and open source (GPL-3.0). It grew out of <a href="https://github.com/isod8
 
 ---
 
-> **Status: 1.1, EXPERIMENTAL.** This is an early, experimental release, and there is still a huge amount of work to do (see [What is left to do](#what-is-left-to-do)). It passes its whole test suite on a computer, but it has run very little on a real FM-1: expect rough edges. Install it at your own risk, and keep a backup made with the editor. You can go back to the official V15 from the installer page, or to SLOOP with its own `INSTALL-SLOOP.bat`.
+> **Status: 1.2.** Clipper runs on the FM-1, and 1.2 brings SLOOP 2.8.3's fixes (see [New in 1.2](#new-in-12-sloop-283s-fixes-a-steadier-second-core-the-ewi-as-one-voice)). It passes its whole test suite on a computer. There is still a lot to do (see [What is left to do](#what-is-left-to-do)). Install it at your own risk, and keep a backup made with the editor. You can go back to the official V15 from the installer page, or to SLOOP with its own `INSTALL-SLOOP.bat`.
 
 SLOOP is a groovebox. **Clipper is a synthesizer** with 23 engines and 407 sounds, one instrument (two in MULTI) like the original FM-1 firmware, Felucca and Baudgirl's FM-1+VA. It has no tracks, no drum machine, no song mode and no built-in samples. It keeps SLOOP's 12 sound engines, effects, arpeggiator, step sequencer, USB audio and MIDI, and adds **HYBRID**: one voice built from three oscillators, two filters and a modulation matrix, with the whole patch editable in the browser.
 
@@ -52,7 +52,18 @@ SLOOP is a groovebox. **Clipper is a synthesizer** with 23 engines and 407 sound
 
 **The web editor** (Chrome or Edge, nothing to install): every parameter live; a pro step sequencer (tools, generators, velocity lanes, a pattern library); the whole HYBRID and FMX patches; the MOD SEQ's lanes; the tuning and `.scl` files; DX7 banks; your own wavetables; a sound library, undo / compare / A-B / randomize tools; backups of the whole FM-1.
 
-## New in 1.1 (experimental): ultra-compatible MIDI, the SLOOP 2.7.2 sequencer, and a clean reverb
+## New in 1.2: SLOOP 2.8.3's fixes, a steadier second core, the EWI as one voice
+
+- **A note held under others keeps sounding** (after SLOOP 2.8.2 and 2.8.3): a key held while you play or record over it is never restarted nor cut by the sequencer, live, in a free take or an overdub, on POLY and on UNI2 / UNI4; a hold overdubbed over a recorded melody goes on through its notes, and the notes the sustain pedal holds are left alone too. Recording a key over a held one on a MONO or LEGATO sound says **MONO: SET VOICE POLY** (once).
+- **SEQ > NOTES: LEN under later notes**: a note's length can run on under the notes after it (a long bass under a melody, programmed); a chord's notes and DELETE follow.
+- **No stuck notes when MIDI comes in too fast**: when a note message does not fit, the notes MIDI holds are ended once what came is read.
+- **SAMPLE and GRAIN: a sample played again starts from silence with its ATK**: no click when a note is played again on MONO, LEGATO or UNISON, or the same note on POLY.
+- **No crash on FMX when ALG is turned past 32** (FM KICK and the other FMX sounds: the screen read past the end of a names list and showed FELUCCA CRASH).
+- **The second core, hardened**: a backup over USB could crash an FM-1 running on two cores (a red screen until a power cycle). Every job core 1 runs is now checked: a wrong one is refused and the FM-1 goes on with one core until it is switched off, and a fault beside core 1 no longer freezes it. If a unit still does it: HOME (held) → SYS → 2ND CORE OFF.
+- **A quick tap no longer flashes a layer**: SEQ, EDIT, ARP and GLO held show their layer after 0.35 s (it was 0.14 s), so a tap opens the pages cleanly.
+- **The EWI plays one voice**: with GLO > MIDI 2 > EWI on, the instrument plays one note at a time, legato, whatever its VOICE (an EWI is a monophonic instrument: a soft note no longer adds a second one at full level); the notes' velocity is fixed and the breath alone shapes the level. (Asked for by an EWI player.)
+
+## New in 1.1: ultra-compatible MIDI, the SLOOP 2.7.2 sequencer, and a clean reverb
 
 - **Fixed: the crackle on the left channel with the reverb on** (heard by several players, not on the original firmware). **PLATE, HALL and SHIMMER** read one of their left output taps 1417 samples back on a 1334-sample line: out of the line, 83 samples old or in the line before it, a click every 60 ms on the left only (the right's taps were all inside). ROOM did not have it. A second case is fixed too: **the room reverb overflowed** with DAMP turned down (under ~35) and a loud sound (LEVEL and REV up, a chord), its loop's 32-bit products wrapped and the tail turned into a full-scale crackle that went on after the notes. 1.1 also bounds the part and master stages the same way, and moves the room reverb's lines out of the SRAM next to the second core's stacks into the main pool. Every other effect was checked the same way (`tests/fx_sweep_test.c`: a sine through every reverb type, delay MODE and TIME, the chorus, the swept INSERTs, the JUNO chorus and the master at their extremes, also under AddressSanitizer): none had the bug; two engines got a guard against reading out of their tables (LOFI's arp, WAVE's frame). If a noise remains, the tests that tell where it comes from are in [QUICKSTART.md](QUICKSTART.md) (A noise on one side?).
 - **Made for MIDI controllers and DAWs** (the whole list: [docs/midi.md](docs/midi.md)): **program changes** load the sounds (with **bank select**, CC 0: program *p* of bank *b* is the list's sound *b* × 128 + *p*; GLO > MIDI 2 > PROG turns them off); **CC 11 expression** is the sound's volume; **CC 120 / 123** stop every note (a DAW's panic button), **CC 121** resets the controllers; the **pitch bend range** is GLO > MIDI > **BEND** (AUTO, or 1 to 24 semitones) and **RPN 0** sets it; **LOCAL** OFF (and CC 122) for a DAW that sends the track back; **CC 76 / 77 / 78** the LFO's rate, vibrato and fade; GLO > MIDI 2 > **SEND CC**: the knobs send their CCs, a DAW records and plays back the moves; GLO > MIDI 2 > **EWI**: a **breath controller** (CC 2) plays the volume, and with V+AT the aftertouch too (the cutoff follows the breath; asked for by an EWI player); Clipper answers the **MIDI identity request**. The knobs no longer miss steps when turned fast (SLOOP 2.7.2's encoder).
@@ -63,7 +74,7 @@ SLOOP is a groovebox. **Clipper is a synthesizer** with 23 engines and 407 sound
 - **The factory sounds load dry**: no delay and no reverb send (users asked for it); FX > DLY / REV, or the SPACE macro, add them, and your user presets keep what you saved.
 - **A4 in Hz** (GLO → TUNING → **A4**, 400 to 480 Hz, and in the editor's Tuning card): 432, 415 (baroque), 442 / 443 (orchestras)... under every tuning system, kept with the settings. (Asked for in a comment on the launch video.)
 
-## New in 1.0 (experimental): a stereo voice, a deeper modulation, four macros, a hall and a shimmer
+## New in 1.0: a stereo voice, a deeper modulation, four macros, a hall and a shimmer
 
 - **SPREAD** (VOICE 3 → **SPRED**, every engine): each voice gets its own place between left and right (the outer voices first, the next ones between), so a chord opens across the stereo field and the voices of UNI2 / UNI4 fan out. The middle stays what it was (left + right is the sound without SPREAD, bit for bit at 0), and the side goes through the same DIST / INSERT level and track FILTER. The pads and the unison sounds come with a little of it (48).
 - **The matrix has 12 slots** (MATRIX 1 .. 12, on the FM-1 and in the editor), and new sources: **LFO 3** (LFO 3 page: RATE, WAVE, MODE FREE / KEY) and the four macros **MAC1 .. MAC4**.
@@ -178,9 +189,9 @@ Both suggested in the Felucca discussions ([#145](https://github.com/hugelton/Fe
 
 ## What is left to do
 
-Clipper 1.1 is experimental. What it needs most, roughly in order:
+What Clipper needs most, roughly in order:
 
-- **Testing on the device.** Everything new in 1.0 and 1.1 was measured on a computer only. The CPU load on the FM-1 (SPREAD, SHIMMER, 8 voices on both cores; 12 and 16 voices), the flash and RAM of the real build, clicks or crackles that only the hardware shows, the storage of user presets after a power cut: all of it has to be checked on real units.
+- **More testing on the device.** The CPU load on the FM-1 (SPREAD, SHIMMER, 8 voices on both cores; 12 and 16 voices), the flash and RAM of the real build, clicks or crackles that only the hardware shows, the storage of user presets after a power cut: all of it keeps being checked on real units: please report what you find.
 - **More room for your own sounds.** The FM6 / FMX patch bank holds 27 patches, not even one whole DX7 bank (32 voices). The flash freed by the samples and the projects (about 300 KB) could hold 32 banks of 32 voices; the format, the editor page and the way to pick them on the FM-1 are still to be built.
 - **The sounds.** The factory presets barely use what 1.0 added (the macros, LFO 3, ENV 2 LOOP, slots 7 to 12, PING / TAPE, HALL / SHIMMER). A sound-design pass on all 407 is due, and the macros should be tuned per engine.
 - **The editor.** It shows every parameter, but some things deserve a page of their own (a visual modulation matrix, a bank manager for SysEx). It has been used much less with 1.0's layout than with 0.9's.
@@ -236,7 +247,7 @@ The voices are a build option: 8 (the default, as SLOOP), 12 or 16 (`INSTALL-CLI
 
 ## Tests
 
-`HOST_ONLY=1 tests/run_tests.sh` runs everything that does not need the JieLi toolchain (1.1: the SLOOP 2.7.2 sequencer, every MIDI message, the effects sweep (a sine through every effect at its extremes); 1.0: SPREAD, the 12 slots, LFO 3, ENV 2 LOOP, the macros, HALL / SHIMMER, PING / TAPE, the stores' tail, the voices on both cores with SPREAD, and the click test of 55 cases; 0.9: the filter models, VINTAGE, the TUNING, TURNG; 0.8: JUNO and its chorus, VECTOR, the MOD SEQ, SPICE / DICE, their pages; 0.7: the voices on both cores in every mode of the host double of core 1, and under ThreadSanitizer; UNDO, COMPARE, FAV, KBD HOLD): the synth mode (HOME, presets, keys, pages, one instrument, MIDI omni), the HYBRID tests (the pitch of every oscillator, the filters, the matrix, the controllers, 300 random patches, the cost per voice), the editor's commands, golden renders of every sound, ASan and UBSan, a soak test, and the web pages.
+`HOST_ONLY=1 tests/run_tests.sh` runs everything that does not need the JieLi toolchain (1.2: a note held under others, live, recorded, overdubbed and in a free take, on POLY and UNI2, LEN under later notes, a MIDI burst, a sample played again from silence, every engine's value names under AddressSanitizer; 1.1: the SLOOP 2.7.2 sequencer, every MIDI message, the effects sweep (a sine through every effect at its extremes); 1.0: SPREAD, the 12 slots, LFO 3, ENV 2 LOOP, the macros, HALL / SHIMMER, PING / TAPE, the stores' tail, the voices on both cores with SPREAD, and the click test of 55 cases; 0.9: the filter models, VINTAGE, the TUNING, TURNG; 0.8: JUNO and its chorus, VECTOR, the MOD SEQ, SPICE / DICE, their pages; 0.7: the voices on both cores in every mode of the host double of core 1, and under ThreadSanitizer; UNDO, COMPARE, FAV, KBD HOLD): the synth mode (HOME, presets, keys, pages, one instrument, MIDI omni), the HYBRID tests (the pitch of every oscillator, the filters, the matrix, the controllers, 300 random patches, the cost per voice), the editor's commands, golden renders of every sound, ASan and UBSan, a soak test, and the web pages.
 
 ## Credits
 

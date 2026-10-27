@@ -156,7 +156,7 @@ int main(void)
     check(note_span(t, 0) == 2, "C1: LEN 2 to start with");
     n = note_span_set(t, 0, 10);
     if (getenv("DUMP")) dump(t, 12);
-    check(n == 10 && note_span(t, 0) == 10, "C1: LEN 10 under C2 D2 E2 (2.8.1: NOTE AHEAD at 2)");
+    check(n == 10 && note_span(t, 0) == 10, "C1: LEN 10 under C2 D2 E2 (SLOOP 2.8.1: NOTE AHEAD at 2)");
     check(note_span(t, 2) == 2 && note_span(t, 4) == 2 && note_span(t, 6) == 2, "the melody's notes keep their LEN 2");
     transport_req = 1;
     block();
@@ -189,7 +189,7 @@ int main(void)
     t->step[2].note[1] = 55; t->step[2].note[2] = 59; t->step[2].note[3] = 62; t->step[2].n = 4;
     n = note_span_set(t, 0, 10);
     check(n == 2 && span_why == 1u, "a step with 4 notes: stops, says STEP FULL");
-    /* no notes ahead: as 2.8.1 (clean TIEs) */
+    /* no notes ahead: as SLOOP 2.8.1 (clean TIEs) */
     melody(t);
     n = note_span_set(t, 6, 6);
     check(n == 6 && t->step[8].time == ST_TIE && t->step[11].time == ST_TIE && t->step[12].time == ST_REST, "nothing ahead: plain TIEs, as before");

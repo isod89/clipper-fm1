@@ -29,7 +29,7 @@ static uint32_t sec_armed_ms;
 static uint8_t chain_tap[CHAIN_MAX], chain_taps;        /* the section keys tapped in this SAVE hold (the first
                                                          * is asked for at once; two or more: a chain on release) */
 #define TAP_MS 450u                                     /* a press shorter than this, untouched: a tap */
-#define SHOW_MS 350u                                    /* the layer shows after this (a tap does not flash it; 2.8.3: was 0.14 s,
+#define SHOW_MS 350u                                    /* the layer shows after this (a tap does not flash it; SLOOP 2.8.3: was 0.14 s,
                                                          * a quick tap flashed it; a key or knob used shows it at once) */
 
 /* the ISR's view of the panel: the layers' buttons, OCT- / OCT+, REC / PLAY of a free take */
