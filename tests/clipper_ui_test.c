@@ -465,13 +465,13 @@ int main(int argc, char **argv)
     /* SEQ and SEL keep their layers */
     {
         go_home(); frames(2);
-        press(B_SEQ); frames(12);
+        press(B_SEQ); frames(24);                    /* (2.8.3: the layer after 0.35 s) */
         check(ui.layer == LY_STEP, "SEQ held: the steps layer");
         ui.force = 1; frame(); ppm("clipper-layer-steps");
         key(0); frames(2);
         check(trk_step_on(TSEL, 0), "SEQ held + key 1: step 1 set");
         release(B_SEQ); frames(2);
-        press(B_SCL); frames(12);
+        press(B_SCL); frames(24);                    /* (2.8.3: the layer after 0.35 s) */
         check(ui.layer == LY_SCALE, "SEL held: the key layer");
         release(B_SCL); frames(2);
     }
@@ -486,7 +486,7 @@ int main(int argc, char **argv)
         t->p[P_SLEN] = 16; t->p[P_CHORD] = 0; song.octave = 0;
         for (j = 0; j < NSTEP; j++) step_clear(&t->step[j]);
         for (j = 0; j < 16u; j += 4u) put_step(t, j, 1, j % 8u ? n64 : n60, ST_NOTE, 0);
-        press(B_EDIT); frames(12);
+        press(B_EDIT); frames(24);                    /* (2.8.3: the layer after 0.35 s) */
         ok = ui.layer == LY_ERASE;
         ui.force = 1; frame(); ppm("clipper-layer-edit");
         {                                             /* EDIT + a key, stopped: that note gone from the whole pattern */
@@ -513,7 +513,7 @@ int main(int argc, char **argv)
         tap(B_EDIT); frames(2);
         check(!ui.home && cur_page()->fam == FAM_EDIT, "EDIT tapped: its pages");
         go_home(); frames(2);
-        press(B_GLO); frames(12);
+        press(B_GLO); frames(24);                    /* (2.8.3: the layer after 0.35 s) */
         ok = ui.layer == LY_MIX;
         ui.force = 1; frame(); ppm("clipper-layer-glo");
         fm1_in.notes |= 1u << key_of_white(8); frames(2);
@@ -533,7 +533,7 @@ int main(int argc, char **argv)
         release(B_GLO); frames(4);
         t->p[P_LEVEL] = 100;
         check(ok, "GLO held: key 9 a fill while held; keys 1..8 nothing (one instrument); KNOB 1 the sound's level, KNOB 2 nothing");
-        press(B_ARP); frames(12);
+        press(B_ARP); frames(24);                    /* (2.8.3: the layer after 0.35 s) */
         ok = ui.layer == LY_ROLL;
         transport_req = 1; frames(4);
         for (j = 0; j < NSTEP; j++) step_clear(&t->step[j]);

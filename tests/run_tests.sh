@@ -67,9 +67,13 @@ run "drum lanes, kit audio, metronome, record arm, free take" "$OUT/studio_drums
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq2_test" tests/seq2_test.c -lm
 run "sequencer 2.0: no drift, ratchets, roll, erase / undo, ghost / hard, chords, mute / solo, nudge, locks" "$OUT/seq2_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/hold_rec_test" tests/hold_rec_test.c -lm
-run "2.8.2: a note held under others (live, recorded, overdubbed), MIDI in overflow" "$OUT/hold_rec_test"
+run "2.8.3: a note held under others (live, recorded, overdubbed, free take), MIDI in overflow" "$OUT/hold_rec_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/len_test" tests/len_test.c -lm
-run "2.8.2: SEQ > NOTES, LEN under later notes, MONO / STEP FULL, shorter, delete" "$OUT/len_test"
+run "2.8.3: SEQ > NOTES, LEN under later notes, MONO / STEP FULL, shorter, delete" "$OUT/len_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drum_steal_test" tests/drum_steal_test.c -lm
+run "2.8.3: drum voices on a busy beat, every kit: no kick cut by another sound" "$OUT/drum_steal_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/chop_attack_test" tests/chop_attack_test.c -lm
+run "2.8.3: a sample played again starts from silence with its ATK (POLY same note, MONO, LEGATO, UNISON), no click" "$OUT/chop_attack_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.c -lm
 run "synthesised drum kits: every kit x sound bounded, audible, finite, levels, cost" "$OUT/drumkit_test" "$OUT/drum-kits.wav" "$OUT/drum-kits.txt"
@@ -111,6 +115,10 @@ SYN="$CCS -O2 -w -DCLIPPER_SYNTH=1 -Ibuild/gen -Ifirmware/src -Ifirmware/hal"
 mkdir -p "$OUT/clipper"
 $SYN -o "$OUT/clipper_ui_test" tests/clipper_ui_test.c -lm
 run "Clipper synth: HOME, presets, keys, pages, one track, MIDI omni, no drums / song" "$OUT/clipper_ui_test" "$OUT/clipper"
+$SYN -o "$OUT/clipper_hold_test" tests/hold_rec_test.c -lm
+run "Clipper synth (2.8.3): a note held under others, POLY and UNI2, live / recorded / overdub / free take, MIDI burst" "$OUT/clipper_hold_test"
+$SYN -o "$OUT/clipper_chop_test" tests/chop_attack_test.c -lm
+run "Clipper synth (2.8.3): a sample played again starts from silence with its ATK, no click" "$OUT/clipper_chop_test"
 $SYN -o "$OUT/clipper_stress" tests/stress_test.c -lm
 run "Clipper synth: stress (hard random use, clean stop)" "$OUT/clipper_stress" "${STRESS_FRAMES:-40000}"
 $SYN -o "$OUT/clipper_soak" tests/soak_test.c -lm
@@ -215,6 +223,9 @@ fi
 if $SYN_UB -o "$OUT/clipper_ui_asan" tests/clipper_ui_test.c -lm 2>/dev/null; then
     mkdir -p "$OUT/clipper_asan"
     run "Clipper synth: UI under ASan + UBSan" sh -c "'$OUT/clipper_ui_asan' '$OUT/clipper_asan' >/dev/null && echo clean"
+fi
+if $SYN_UB -o "$OUT/param_names_asan" tests/param_names_test.c -lm 2>/dev/null; then
+    run "every engine's EDIT values as shown, under ASan (the FMX ALG / PTCH names ended with a 0: FM KICK ALG past 32 crashed)" "$OUT/param_names_asan"
 fi
 
 $CC -o "$OUT/upreset_test" tests/upreset_test.c

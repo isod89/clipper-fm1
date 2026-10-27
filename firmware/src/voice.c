@@ -216,7 +216,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
     for (i = 0; i < np; i++) {
         if (t->v[i].active && t->v[i].note == note) {
             if (t->v[i].stage == 4u && voices_busy() >= NVOICE)
-                voice_room(t, 0);                       /* (2.8.2) a voice fading out (given up) sounds again: within the
+                voice_room(t, 0);                       /* (2.8.3) a voice fading out (given up) sounds again: within the
                                                          * budget of NVOICE, as a new one (after Melodee's voice_reuse) */
             return &t->v[i];
         }
@@ -294,12 +294,36 @@ static void glide_set(track_t *t, voice_t *v, int glide)
     }
 }
 
+/* (SLOOP 2.8.3) a sample (SAMPLE, SLICE) played again on a voice still sounding: it starts over at its first frame, so
+ * its attack must start from silence too. The envelope went on from the level it had: the sample jumped from where it
+ * was to its start at that level (a click), and ATK did nothing. That was every note in MONO / LEGATO / UNISON (one
+ * voice) and the same note played again in POLY (its voice reused); different notes in POLY took fresh voices and
+ * faded in (a SLOOP user's chopped breaks, ATK set to soften the chops' starts). Now the voice fades out over
+ * KILL_BLOCKS (~1.5 ms: env_tick stage 4), then the note starts on it from silence with its ATK (track_render:
+ * VP_ON). A note-off within the fade is kept for it (VP_OFF: released as it starts, or held by the pedal) */
+#define VP_ON 1u
+#define VP_OFF 2u
+#define VP_GLIDE 4u
 static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int glide)
 {
     const engine_t *e = ENGINES[t->engine];
     int sounding = v->active && v->stage != 0;
     uint32_t ph0 = v->ph[0], ph1 = v->ph[1], ph2 = v->ph[2];
     int32_t s0 = v->s[0], s1 = v->s[1], s3 = v->s[3], s4 = v->s[4], s5 = v->s[5], s6 = v->s[6], s7 = v->s[7];
+    if (sounding && eng_sampled(e)) {                   /* (SLOOP 2.8.3) fade it out first, then this note from silence */
+        v->note = (uint8_t)note;                        /* (the same note again finds it: voice_alloc) */
+        v->pend_note = (uint8_t)note;
+        v->pend_vel = (uint8_t)vel;
+        v->pend = (uint8_t)(VP_ON | (glide ? VP_GLIDE : 0u));
+        v->gate = 0;
+        v->sus = 0;
+        if (v->stage != 4u)
+            v->kill = KILL_BLOCKS;
+        v->stage = 4;
+        v->age = ++vage;
+        return;
+    }
+    v->pend = 0;
     v->note = (uint8_t)note;
     v->vel = (uint8_t)vel;
     v->gate = 1;
@@ -612,6 +636,9 @@ static void trk_note_off1(track_t *t, uint32_t note)
             t->v[i].gate = 0;
             t->v[i].stage = 3;
         }
+    for (i = 0; i < NVOICE; i++)                        /* (SLOOP 2.8.3) waiting for its fade: it starts, then releases */
+        if ((t->v[i].pend & VP_ON) && t->v[i].pend_note == note && t->mono_note != note)
+            t->v[i].pend |= VP_OFF;
 }
 
 /* Clipper: the sustain pedal comes up: the notes it held are released (a key still down keeps its note:
@@ -637,6 +664,7 @@ static void trk_all_off1(track_t *t)
         t->v[i].gate = 0;
         t->v[i].sus = 0;
         t->v[i].stage = t->v[i].active ? 3 : 0;
+        t->v[i].pend = 0;                               /* (2.8.3: a note waiting for its voice's fade: gone too) */
     }
     t->nmono = 0;
     t->mono_note = 0;
@@ -1267,6 +1295,22 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         uint32_t medm = 0;                              /* bit per EDIT value the matrix moves */
         int mpe;
 #endif
+        if ((v->pend & VP_ON) && !v->active && !fade) {   /* (SLOOP 2.8.3) faded out: the sample's note, from silence */
+            uint32_t pf = v->pend;
+            v->pend = 0;
+            if (voice_room(t, 0)) {                     /* (it was not counted while fading: within the budget) */
+                voice_start(t, v, v->pend_note, v->pend_vel, (pf & VP_GLIDE) != 0);
+                if (pf & VP_OFF) {                      /* let go within the fade (~1.5 ms): released as it starts, */
+                    if (voice_poly((int)t->p[P_VOICE]) &&   /* or held by the sustain pedal */
+                        part_ctl[CLIPPER_SYNTH ? ctl_part(t) : (uint32_t)(t - trk) % NPART].sus)
+                        v->sus = 1;
+                    else {
+                        v->gate = 0;
+                        v->stage = 3;
+                    }
+                }
+            }
+        }
         if (!v->active)
             continue;
 #if CLIPPER_SYNTH

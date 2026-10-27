@@ -176,6 +176,9 @@ static void con_status(void)
     con_puts("\r\n");
     con_kv("uptime_ms", (int32_t)fm1_ms);
     con_kv("cpu_pct", (int32_t)(song.cpu_q8 * 100u / 256u));
+    con_kv("cpu1_gave_up", (int32_t)fm1_c1_gave_up);      /* (2.8.3) 1 a wrong job read, 2 one late, 3 barred till power-off */
+    con_kv("cpu1_bad", (int32_t)fm1_c1_mb.bad);           /* jobs core 1 read wrong and refused (fm1_cpu1.h) */
+    con_kx("cpu1_bad_fn", fm1_c1_mb.bad_fn);
 #if FELUCCA_CPU1                                         /* (0.7, after SLOOP 2.7) the second core */
     con_kv("cpu1", (int32_t)cpu1_state);                 /* 1 did not start, 2 self-test failed, 3 running (cpu1.c) */
     con_kx("cpu1_trace", fm1_c1_trace);

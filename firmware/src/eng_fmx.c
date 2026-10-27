@@ -139,10 +139,13 @@ static const fmx_patch_t FMX_FACTORY[FMX_NFACTORY] = {
 };
 #undef OP
 #undef NOOP
-static const char *const N_FMX_PATCH[FMX_NSLOT] = {
+/* (fixed with SLOOP 2.8.3's port) the names end with a 0: params.c param_format counts an F_INT value's names up to
+ * it. Without it the count ran past the list into whatever came after (FM KICK, ALG past 32: a FELUCCA CRASH, the
+ * screen glitched; tests/param_names_test.c) */
+static const char *const N_FMX_PATCH[FMX_NSLOT + 1u] = {
     "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16",
     "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "B13", "B14", "B15", "B16", "B17",
-    "B18", "B19", "B20", "B21", "B22", "B23", "B24", "B25", "B26", "B27"};
+    "B18", "B19", "B20", "B21", "B22", "B23", "B24", "B25", "B26", "B27", 0};
 static const char *const N_FMX_MODE[] = {"PM", "FM", "RING"};
 static const char *const N_FMX_FIX[] = {"RATIO", "FIX"};
 

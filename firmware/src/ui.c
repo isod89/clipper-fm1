@@ -152,190 +152,28 @@ static uint32_t note_set_len(track_t *t, uint32_t i, uint32_t want)
     }
     return n;
 }
-/* ---- (2.8.2) LEN under later notes ----
+/* ---- (2.8.3) LEN under later notes ----
  * POLY: a note's LEN runs on under the notes after it: it joins their steps as a note going on (SF_CONT, as a
  * recording over held notes writes it, seq.c rec_hold), 4 notes a step at most; after them, a NOTE of its notes only,
  * all going on, carries it (the others end there). A long bass under a melody, programmed. MONO / LEGATO parts play one
- * note at a time: it stops there and says so. The step format is 2.7's: a project of 2.8.2 opens in 2.7 and later.
- * span_why: why the last note_span_set stopped short (0 a note ahead, 1 the step is full, 2 a MONO sound, 3 the end) */
-static uint8_t span_why;
-UI_SMALL static uint32_t span_notes(const step_t *st, uint8_t *s)   /* the notes step st starts (not ones going on) */
-{
-    uint32_t k, n = 0;
-    for (k = 0; k < st->n && k < 4u; k++)
-        if (!(st->flags & SF_CONT(k)))
-            s[n++] = st->note[k];
-    return n;
-}
-UI_SMALL static int span_in(const uint8_t *c, uint32_t nc, uint32_t note)
-{
-    uint32_t i;
-    for (i = 0; i < nc; i++)
-        if (c[i] == note)
-            return 1;
-    return 0;
-}
-/* the chain going into step j: 1 it carries all of s, and *other: notes not in s too */
-UI_SMALL static int span_chain(const track_t *t, uint32_t j, const uint8_t *s, uint32_t ns, int *other, uint8_t *oc, uint32_t *no)
-{
-    uint8_t c[4];
-    uint32_t n = chain_notes(t, j, c), i, all = 1;
-    *other = 0;
-    if (no)
-        *no = 0;
-    for (i = 0; i < ns; i++)
-        all &= (uint32_t)span_in(c, n, s[i]);
-    for (i = 0; i < n; i++)
-        if (!span_in(s, ns, c[i])) {
-            *other = 1;
-            if (oc)
-                oc[(*no)++] = c[i];
-        }
-    return n && all;
-}
-UI_SMALL static int span_cont_all(const step_t *st, const uint8_t *s, uint32_t ns)   /* all of s go on in st */
-{
-    uint32_t i, k;
-    if (!step_on(st))
-        return 0;
-    for (i = 0; i < ns; i++) {
-        for (k = 0; k < st->n && !(st->note[k] == s[i] && (st->flags & SF_CONT(k))); k++)
-            ;
-        if (k == st->n)
-            return 0;
-    }
-    return 1;
-}
+ * note at a time: it stops there and says so. The step format is 2.7's: a project of 2.8.3 opens in 2.7 and later.
+ * The work: seq.c span_len / span_set (a free take uses them too); span_why: why it stopped short */
 UI_SMALL static uint32_t note_span(const track_t *t, uint32_t i)   /* LEN: the steps step i's notes sound */
 {
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), n = 1, ns;
     uint8_t s[4];
-    int other;
+    uint32_t ns;
     if (!step_on(&t->step[i]) || !(ns = span_notes(&t->step[i], s)))
         return note_len(t, i);
-    while (i + n < len) {
-        const step_t *st = &t->step[i + n];
-        if (st->time == ST_TIE ? !span_chain(t, i + n, s, ns, &other, 0, 0) : !span_cont_all(st, s, ns))
-            break;
-        n++;
-    }
-    return n;
-}
-UI_SMALL static void span_drop(step_t *st, const uint8_t *s, uint32_t ns)   /* s's notes going on in st: out */
-{
-    uint32_t k = 0;
-    while (k < st->n) {
-        if ((st->flags & SF_CONT(k)) && span_in(s, ns, st->note[k])) {
-            uint32_t j, c;
-            for (j = k; j + 1u < st->n; j++)
-                st->note[j] = st->note[j + 1u];
-            st->lvl = (uint8_t)((st->lvl & ((1u << (2u * k)) - 1u)) | ((st->lvl >> (2u * k + 2u)) << (2u * k)));
-            st->rat = (uint8_t)((st->rat & ((1u << (2u * k)) - 1u)) | ((st->rat >> (2u * k + 2u)) << (2u * k)));
-            c = (st->flags & SF_CONT_ALL) / SF_CONT0;
-            c = (c & ((1u << k) - 1u)) | ((c >> (k + 1u)) << k);
-            st->flags = (uint8_t)((st->flags & ~SF_CONT_ALL) | c * SF_CONT0);
-            st->n--;
-        } else {
-            k++;
-        }
-    }
-    if (!st->n) {
-        memset(st, 0, sizeof *st);
-        st->time = ST_REST;
-    }
+    return span_len(t, i, s, ns);
 }
 UI_SMALL static uint32_t note_span_set(track_t *t, uint32_t i, uint32_t want)
 {
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), cur, j, n, ns, no, k;
-    uint8_t s[4], oc[4];
-    int other;
+    uint8_t s[4];
+    uint32_t ns;
     span_why = 3;
     if (!step_on(&t->step[i]) || !(ns = span_notes(&t->step[i], s)))
         return note_set_len(t, i, want);
-    cur = note_span(t, i);
-    if (want == cur)
-        return cur;
-    /* 1. back to one step: what carried its notes after it goes. Read first (the chains as they are), then written: a
-     * TIE of its notes only goes (a REST), its notes going on in later steps go; the melody's TIEs stay (theirs again) */
-    {
-        uint8_t act[NSTEP];
-        for (j = i + 1u; j < i + cur; j++)
-            act[j] = t->step[j].time == ST_TIE ? (uint8_t)(span_chain(t, j, s, ns, &other, 0, 0) && !other) : 2u;
-        for (j = i + 1u; j < i + cur; j++) {
-            step_t *st = &t->step[j];
-            if (act[j] == 1u) {
-                if (!st->n)
-                    memset(st, 0, sizeof *st);
-                st->time = ST_REST;                     /* (a TIE holding notes (an older SLOOP) keeps them) */
-            } else if (act[j] == 2u) {
-                span_drop(st, s, ns);
-            }
-        }
-        for (j = i + 1u; j <= i + cur && j < len; j++) {   /* an end it left in a melody's note (step 3 below): a TIE again */
-            step_t *st = &t->step[j];
-            uint8_t c[4];
-            uint32_t nc, m, same;
-            if (!step_pure_cont(st) || j == i)
-                continue;
-            nc = chain_notes(t, j, c);
-            same = nc == st->n;
-            for (m = 0; m < st->n && same; m++)
-                same = (uint32_t)span_in(c, nc, st->note[m]);
-            if (same) {
-                memset(st, 0, sizeof *st);
-                st->time = ST_TIE;
-            }
-        }
-    }
-    /* 2. on to want */
-    for (n = 1, j = i + 1u; n < want && j < len; n++, j++) {
-        step_t *st = &t->step[j];
-        if (st->time == ST_TIE) {
-            if (!span_chain(t, j, s, ns, &other, 0, 0)) {
-                span_why = 0;
-                break;
-            }
-            continue;
-        }
-        if (step_on(st)) {
-            uint32_t add = 0;
-            if (t->p[P_VOICE] != V_POLY) {
-                span_why = 2;
-                break;
-            }
-            for (k = 0; k < ns; k++)
-                add += !span_in(st->note, st->n, s[k]);
-            if (add < ns || st->rat || (st->flags & SF_SLIDE)) {   /* (the same pitch played there, ratchets, a slide) */
-                span_why = 0;
-                break;
-            }
-            if (st->n + add > 4u) {
-                span_why = 1;
-                break;
-            }
-            for (k = 0; k < ns; k++) {
-                st->flags |= (uint8_t)SF_CONT(st->n);
-                st->note[st->n++] = s[k];
-            }
-            continue;
-        }
-        span_chain(t, j, s, ns, &other, 0, 0);
-        memset(st, 0, sizeof *st);
-        if (other) {                                    /* after a melody's note: its notes only, going on */
-            for (k = 0; k < ns; k++) {
-                st->note[k] = s[k];
-                st->flags |= (uint8_t)SF_CONT(k);
-            }
-            st->n = (uint8_t)ns;
-            st->time = ST_NOTE;
-        } else {
-            st->time = ST_TIE;
-        }
-    }
-    /* 3. it ends inside a melody's note: from there, the melody's only */
-    if (j < len && t->step[j].time == ST_TIE && span_chain(t, j, s, ns, &other, oc, &no) && other)
-        chain_end(t, j, oc, no);
-    return n;
+    return span_set(t, i, s, ns, want);
 }
 
 /* a synth step's velocity as it plays (seq.c step_vel: ACC 127, else its VEL, 96 when 0, through its first note's level) */
@@ -469,11 +307,11 @@ UI_SMALL static void note_del(track_t *t, uint32_t i, uint32_t k)   /* one note 
     if (!step_on(st))
         return;
     if (st->n <= 1u) {
-        note_span_set(t, i, 1);                         /* (its TIEs: RESTs; 2.8.2: where it went on under others, out) */
+        note_span_set(t, i, 1);                         /* (its TIEs: RESTs; 2.8.3: where it went on under others, out) */
         step_clear(st);
         return;
     }
-    {   /* (2.8.2) one note of a chord: the chord back to one step, then the others as long again (its going on: gone) */
+    {   /* (2.8.3) one note of a chord: the chord back to one step, then the others as long again (its going on: gone) */
         uint32_t w = note_span(t, i);
         if (w > 1u && w != note_len(t, i)) {
             note_span_set(t, i, 1);
@@ -501,7 +339,7 @@ static int32_t note_shift(track_t *t, uint32_t i, int32_t dir, int copy)
 {
     uint32_t len = trk_len(t), n = note_len(t, i), j, to;
     if (!step_on(&t->step[i]) || note_span(t, i) != n)
-        return -1;                                      /* (2.8.2: one going on under later notes: LEN 1 first) */
+        return -1;                                      /* (2.8.3: one going on under later notes: LEN 1 first) */
     to = copy ? i + n : dir > 0 ? i + 1u : i - 1u;
     if ((!copy && dir < 0 && i == 0u) || to + n > len)
         return -1;
