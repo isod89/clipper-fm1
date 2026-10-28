@@ -5,6 +5,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!--PWA--><link rel="manifest" href="../clipper.webmanifest"><meta name="theme-color" content="#000000"><link rel="icon" href="../icon-192.png"><!--/PWA-->
 <title>Clipper installer</title>
 <style>
   :root { --bg: #000; --fg: #f2f2f2; --dim: #8a8a92; --tile: #16161a; --line: #2a2a30;
@@ -91,6 +92,8 @@
   <p id="status"></p>
   <pre id="log"></pre>
   <a class="ed" href="../editor/" data-t="editor"></a>
+  <p class="small"><a href="../editor/clipper-editor.html" download="clipper-editor.html" data-t="edOffline"></a></p>
+  <p><button id="app" class="ed" hidden data-t="appInstall"></button></p>
   <section class="about" data-l="en">
     <h2>Engines</h2>
     <dl class="engines">
@@ -268,6 +271,8 @@ const TEXT = {
     warn: "書き込み中は USB を抜かないでください。",
     install: "インストール", other: "English",
     editor: "エディタ（インストール後、パソコンから音色やシーケンスを編集）",
+    edOffline: "エディタをダウンロード（パソコンでインターネットなしで使う：ファイルを Chrome / Edge で開く）",
+    appInstall: "アプリとしてインストール（エディタとインストーラーがオフラインで使える・Android も）",
     direct: "USB ケーブルはパソコンに直接つないでください。Probe や Transporter などの機材は不要です。",
     brick: "万一インストールに失敗して起動しなくなった場合は、復旧に Transporter が必要です:",
     beta: "これは無保証のカスタムファームウェアです。このファームウェアを使ったことで FM-1 が壊れたり不具合が起きたりしても、作者は一切の責任を負いません。自己責任でお使いください。",
@@ -305,6 +310,8 @@ const TEXT = {
     warn: "Do not unplug the USB cable while writing.",
     install: "Install", other: "français",
     editor: "Editor (after installing: edit sounds and sequences from the computer)",
+    edOffline: "Download the editor to use it without internet on a computer (open the file in Chrome or Edge)",
+    appInstall: "Install the app (the editor and the installer offline, Android too)",
     direct: "Connect the USB cable directly to the computer. No probe or Transporter is needed.",
     brick: "If an install fails and the FM-1 no longer starts, recovering it needs a Transporter:",
     beta: "This is custom firmware with no warranty. The author accepts no responsibility if your FM-1 is damaged or misbehaves because of it. Use it at your own risk.",
@@ -342,6 +349,8 @@ const TEXT = {
     warn: "Ne débranche pas le câble USB pendant l'écriture.",
     install: "Installer", other: "日本語",
     editor: "Éditeur (après l'installation : édite les sons et les séquences depuis l'ordinateur)",
+    edOffline: "Télécharger l'éditeur pour l'utiliser sans internet sur un ordinateur (ouvre le fichier dans Chrome ou Edge)",
+    appInstall: "Installer l'app (l'éditeur et l'installateur hors ligne, Android aussi)",
     direct: "Branche le câble USB directement sur l'ordinateur. Aucune sonde ni Transporter n'est nécessaire.",
     brick: "Si une installation échoue et que la FM-1 ne démarre plus, il faut un Transporter pour la récupérer :",
     beta: "C'est un firmware personnalisé sans garantie. L'auteur décline toute responsabilité si ta FM-1 est endommagée ou fonctionne mal à cause de lui. Utilise-le à tes risques.",
@@ -389,6 +398,22 @@ $("lang").addEventListener("click", () => {
   applyLang();
 });
 applyLang();
+/* (1.1, after SLOOP 2.6) the site without internet (webapp/sw.js): opened once online, the installer, the firmware and
+ * the editor work offline too, still on https (Android: a downloaded file opens as content://, where Chrome refuses MIDI) */
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
+  navigator.serviceWorker.register("../sw.js").catch(() => {});
+{
+  let ask = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); ask = e; $("app").hidden = false; });
+  window.addEventListener("appinstalled", () => { ask = null; $("app").hidden = true; });
+  $("app").addEventListener("click", async () => {
+    if (!ask) return;
+    ask.prompt();
+    await ask.userChoice.catch(() => {});
+    ask = null;
+    $("app").hidden = true;
+  });
+}
 const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textContent = t(k) + arg; };
 const say = (txt) => { lastKey = null; $("status").textContent = txt; };
 const log = (t) => { $("log").textContent += t + "\n"; };

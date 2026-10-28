@@ -17,7 +17,7 @@ export const OUR_LOADER = (id) => /^ota-FM-1_9\d\d$/i.test(id.text);
 // the MIDI ports the installer may probe (never other gear): the FM-1 under Felucca ("Felucca"), under CLIPPER
 // ("Clipper"), under SLOOP or another firmware named after itself ("SLOOP"), the update loaders, and the names
 // Windows / macOS give the stock firmware (after SLOOP 2.6: going from SLOOP to CLIPPER no longer stops at "not found")
-export const FM1_PORT = /fm-1|felucca|sloop|clipper|ota|composite|sinco|usb-midi/i;
+export const FM1_PORT = /fm-1|felucca|sloop|clipper|kayo|ota|composite|sinco|usb-midi/i;
 
 // errors carry a code the pages translate: notfound, model, stopped, noloader, lost, noreturn,
 // mismatch (detail: the identity the device reports), badreq, foreign (detail: the loader's identity)

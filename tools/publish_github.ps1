@@ -99,6 +99,8 @@ $assets = @()
 $fw = Get-ChildItem (Join-Path (Join-Path $site "firmware") "clipper-*.fwsc") -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($fw) { $assets += $fw.FullName }
 else { Write-Host "(No firmware built: run INSTALL-CLIPPER.bat first. The release is published without the .fwsc; run this script again afterwards to add it.)" -ForegroundColor Yellow }
+$ed = Join-Path (Join-Path (Join-Path $site "webapp") "editor") "clipper-editor.html"   # (1.2) the editor in one file, for offline use
+if (Test-Path $ed) { $edc = Join-Path $work "clipper-editor-1.2.html"; Copy-Item $ed $edc; $assets += (Resolve-Path $edc).Path }
 if (Test-Path "clipper-1.0-demo.wav") { $assets += (Resolve-Path "clipper-1.0-demo.wav").Path }
 gh release view $Tag --repo $full *> $null
 if ($LASTEXITCODE -eq 0) {

@@ -8,6 +8,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Clipper Editor</title>
+<!--PWA--><link rel="manifest" href="../clipper.webmanifest"><meta name="theme-color" content="#000000"><link rel="icon" href="../icon-192.png"><!--/PWA-->
 <style>
   /* SLOOP 2.4 editor: the FM-1's screen on a big display. Black, the four track colours, the device's own
      Terminus pixel font (tools/gen_webfont.py, inlined: the editor also runs from file://), 16 px and 32 px only
@@ -107,6 +108,7 @@
   #live, #mock { color: var(--dim); }
   #connect { width: 100%; }
   .devcard .links { display: flex; justify-content: space-between; gap: 8px; }
+  .devcard #install { white-space: normal; }   /* (1.1: the app; it works offline, Android too) */
   .lang { background: none; color: var(--dim); padding: 0; text-decoration: underline; text-transform: none; }
   .lang:hover:not(:disabled) { background: none; color: var(--fg); }
 
@@ -526,6 +528,8 @@
       <span id="mock" hidden data-t="mock"></span>
       <button id="connect" class="pri" data-t="connect" data-ic="port_usb_c"></button>
       <div class="links"><a class="dim" href="../installer/" data-t="installer"></a><button class="lang" id="lang"></button></div>
+      <button id="install" class="pri" data-t="install" hidden></button>
+      <!--DL--><a class="dim" id="offline" href="clipper-editor.html" download="clipper-editor.html" data-t="offline"></a><!--/DL-->
     </div>
   </aside>
 
@@ -4519,7 +4523,7 @@ const DSYN_MOCK_KITS = "AAEAHwYMIwRhfAAAGgAALAB/AAAACIgBATYAAxQAPGA5XBZkAEMjUgAA
  * often keep the port name of the first firmware they saw ("X0X FM-1", "USB-MIDI"...): the names the installer accepts
  * (fm1ota.js FM1_PORT, the same list), as in/out pairs of one name, "Clipper" / "Felucca" first, then FM-1, then the
  * generic names. connect() keeps the first pair that answers INFO, so a generic name of other gear is tried and left */
-const FM1_PORT = /fm-1|felucca|sloop|clipper|ota|composite|sinco|usb-midi/i;
+const FM1_PORT = /fm-1|felucca|sloop|clipper|kayo|ota|composite|sinco|usb-midi/i;
 function fm1Ports(access) {
   const live = (p) => p.state !== "disconnected" && FM1_PORT.test(p.name || "");
   const ins = [...access.inputs.values()].filter(live), outs = [...access.outputs.values()].filter(live);
@@ -4696,6 +4700,8 @@ const TEXT = {
     loadedUser: "読み込みました: ", reloaded: "本体で音色が変わったので読み直しました", readingBank: "スロットを読み込み中",
     badEngine: "このファームウェアにないエンジンです: ", flashFail: "書き込みに失敗しました（rc {rc}）",
     installer: "Clipper インストーラー",
+    offline: "オフライン用にダウンロード（パソコン：Chrome / Edge で開く）",
+    install: "アプリをインストール",
     tabSeq: "シーケンサー", tabTracks: "トラック", tabSettings: "設定",
     navTrack: "トラック", navSynth: "シンセ", navSounds: "サウンド", navDevice: "本体", tabKits: "ドラムキット", fm1: "FM-1",
     stepList: "ステップ一覧（音名を入力）", stepsOf: "{n} ステップ", fontCredit: "フォント: Terminus（SIL OFL 1.1）",
@@ -4947,6 +4953,8 @@ const TEXT = {
     loadedUser: "Loaded ", reloaded: "The sound changed on the device: read again", readingBank: "Reading the slots",
     badEngine: "This firmware has no such engine: ", flashFail: "Write failed (rc {rc})",
     installer: "Clipper installer",
+    offline: "Download for offline use (a computer: open it in Chrome or Edge)",
+    install: "Install the app",
     tabSeq: "Sequencer", tabTracks: "Tracks", tabSettings: "Settings",
     navTrack: "Track", navSynth: "Synth", navSounds: "Sounds", navDevice: "Device", tabKits: "Drum kit", fm1: "FM-1",
     stepList: "Step list (type note names)", stepsOf: "{n} steps", fontCredit: "Font: Terminus (SIL OFL 1.1)",
@@ -10202,6 +10210,24 @@ showTab(tab);
 libInit();
 if (!MOCK && !navigator.requestMIDIAccess) sayK("nomidi");
 })();
+/* (1.1, after SLOOP 2.6) the site without internet (webapp/sw.js): opened once online, the editor and the installer
+ * work offline too, still on https (Android: a downloaded file opens as content://, where Chrome refuses MIDI); the
+ * app installed opens on its own, without the browser's bar */
+/*PWA*/if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
+  navigator.serviceWorker.register("../sw.js").catch(() => {});
+{   /* (outside the editor's own scope: no $ here) */
+  let ask = null;
+  const btn = document.getElementById("install");
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); ask = e; btn.hidden = false; });
+  window.addEventListener("appinstalled", () => { ask = null; btn.hidden = true; });
+  btn.addEventListener("click", async () => {
+    if (!ask) return;
+    ask.prompt();
+    await ask.userChoice.catch(() => {});
+    ask = null;
+    btn.hidden = true;
+  });
+}/*/PWA*/
 </script>
 </body>
 </html>

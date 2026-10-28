@@ -21,6 +21,7 @@
 - **No crash on FMX when ALG is turned past 32** (FM KICK and the other FMX sounds).
 - **The second core, hardened**: a backup over USB could crash an FM-1 running on two cores. Every job core 1 runs is now checked; a wrong one is refused and the FM-1 goes on with one core until it is switched off. If a unit still does it: HOME (held) → SYS → 2ND CORE OFF.
 - **A quick tap no longer flashes a layer** (SEQ, EDIT, ARP, GLO).
+- **The editor without internet**: download it from the installer page as one file (`clipper-editor-1.2.html`, also attached here), or install the site as an app.
 - **The EWI plays one voice**: with GLO > MIDI 2 > EWI on, the instrument plays one note at a time, legato, and the breath alone shapes the level (a soft note no longer adds a second one at full level).
 
 The full list is in the [README](https://github.com/isod89/clipper-fm1/blob/main/README.md#new-in-12-sloop-283s-fixes-a-steadier-second-core-the-ewi-as-one-voice).
