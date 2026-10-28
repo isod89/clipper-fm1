@@ -4,9 +4,12 @@
 /* ----------------------------------------------------------- LEDs --- */
 /* The LED picture is built off-line and copied one byte per column: clearing
  * and relighting would let the 10 kHz scan catch the dark gap and flicker. */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 static uint8_t led_pos[41];                        /* (col << 3) | row bit, 0xFF = none */
 
-static void led_pos_init(void)
+UI_SMALL static void led_pos_init(void)
 {
     uint32_t id, p, r;
     for (id = 0; id < 41u; id++) {
@@ -18,7 +21,7 @@ static void led_pos_init(void)
     }
 }
 
-static void led_put(uint8_t *nl, uint32_t id, int on)
+UI_SMALL static void led_put(uint8_t *nl, uint32_t id, int on)
 {
     uint8_t q = led_pos[id];
     if (q != 0xFF && on)
@@ -28,8 +31,8 @@ static void led_put(uint8_t *nl, uint32_t id, int on)
 static const uint8_t FAM_BTN[FAM_COUNT] = {B_HOME, B_ENV, B_LFO, B_FX, B_SCL, B_EDIT, B_GLO, B_SAVE,
                                            B_ARP, B_SEQ, B_HOME};   /* button of each page family (TRACKS: HOME) */
 
-static uint32_t cur_fam(void) { return ui.home ? FAM_HOME : cur_page()->fam; }
-static uint32_t cur_btn(void)                      /* the button of the screen shown */
+UI_SMALL static uint32_t cur_fam(void) { return ui.home ? FAM_HOME : cur_page()->fam; }
+UI_SMALL static uint32_t cur_btn(void)                      /* the button of the screen shown */
 {
     if (!ui.home && cur_page()->scope == SC_SONG)
         return B_SAVE;
@@ -39,7 +42,7 @@ static uint32_t cur_btn(void)                      /* the button of the screen s
 }
 
 /* PLAY flashes on every beat, as heard (the sound leaves ~9 ms after it is rendered) */
-static int play_led(void)
+UI_SMALL static int play_led(void)
 {
     uint32_t p = clk_pos, lat = HALF_FRAMES * 3u / 2u * (uint32_t)song.g[G_BPM];
     if (!song.playing)
@@ -52,7 +55,7 @@ static int play_led(void)
 /* what sounds on track t, as keys: the drum hits (each lights its key a few frames) or, on a synth
  * track, the voices still held, mapped back through the keyboard (octave, scale, chords; by
  * @renebohne, PR #11). Shown at once with menu NOTES on, on every screen and layer (keys_notes_dim) */
-static uint32_t keys_sounding(const track_t *t)
+UI_SMALL static uint32_t keys_sounding(const track_t *t)
 {
     uint32_t i, m = 0;
     if (is_drum(t)) {
@@ -77,7 +80,7 @@ static uint32_t keys_sounding(const track_t *t)
     return m;
 }
 
-static uint32_t scale_keys(uint32_t root_only)   /* SEL: the keys in the scale (or its roots only) */
+UI_SMALL static uint32_t scale_keys(uint32_t root_only)   /* SEL: the keys in the scale (or its roots only) */
 {
     uint32_t i, m = 0, root = (uint32_t)trk[0].p[P_ROOT] % 12u, mask = SCALE_MASK[clamp(trk[0].p[P_SCALE], 0, NSCALES - 1)];
     for (i = 0; i < 27u; i++) {
@@ -88,7 +91,7 @@ static uint32_t scale_keys(uint32_t root_only)   /* SEL: the keys in the scale (
     return m;
 }
 
-static uint32_t erase_lanes(const track_t *t)   /* EDIT erase, drum track: the sounds the pattern holds */
+UI_SMALL static uint32_t erase_lanes(const track_t *t)   /* EDIT erase, drum track: the sounds the pattern holds */
 {
     uint32_t i, m = 0;
     if (is_drum(t))
@@ -101,7 +104,7 @@ static uint32_t erase_lanes(const track_t *t)   /* EDIT erase, drum track: the s
     return m;
 }
 
-static uint32_t keys_lit(void)
+UI_SMALL static uint32_t keys_lit(void)
 {
     uint32_t m = 0, i, blink = (fm1_ms / 125u) & 1u;
     track_t *t = TSEL;
@@ -168,7 +171,7 @@ static uint32_t keys_lit(void)
 /* menu NOTES, on the layers whose keys are tiles (FX effects, SEQ steps, GLO mute / solo): what
  * sounds glows dimly under the tiles, which keep their full light. SEL (the scale) and EDIT on the
  * drum track (the sounds of the pattern): those glow, and what sounds is lit (keys_lit) */
-static uint32_t keys_notes_dim(void)
+UI_SMALL static uint32_t keys_notes_dim(void)
 {
     if (!lights_notes)
         return 0u;
@@ -188,7 +191,7 @@ static uint32_t keys_notes_dim(void)
 
 /* the keys' landmarks, dim: the first key of each row of the 4 x 4 grid on screen (white keys
  * 1, 5, 9, 13) while a layer is held, and on the drum track (its 16 sounds, 4 x 4 as on KIT) */
-static uint32_t keys_guide(void)
+UI_SMALL static uint32_t keys_guide(void)
 {
     if (ui.layer == LY_PLAY && !is_drum(TSEL))
         return 0u;
@@ -196,7 +199,7 @@ static uint32_t keys_guide(void)
 }
 
 /* the keys the backlight lights (menu KEYS): the Cs, every white key, or every key; bit k = key k (0 = F3) */
-static uint32_t lights_keys_mask(void)
+UI_SMALL static uint32_t lights_keys_mask(void)
 {
     uint32_t k, m = 0;
     if (!lights_lvl || !lights_keys)
@@ -209,7 +212,7 @@ static uint32_t lights_keys_mask(void)
     return m;
 }
 
-static void ui_leds(void)
+UI_SMALL static void ui_leds(void)
 {
     uint8_t nl[FM1_NCOL] = {0}, dl[FM1_NCOL] = {0}, bl[FM1_NCOL] = {0};
     uint32_t k, c, keys, guide, back;
@@ -262,7 +265,7 @@ static void ui_leds(void)
  * bit 24 its direction (+1), 25..31 its ms per detent (127 slow) */
 #define ACC_GAP 60u
 #define ACC_RATE 80u
-static int32_t accel(uint32_t role, int32_t s, int32_t range)
+UI_SMALL static int32_t accel(uint32_t role, int32_t s, int32_t range)
 {
     uint32_t now = fm1_ms & 0xFFFFFFu, st = ui.enc_t[role], up = s > 0, pi = st >> 25, a, i, m = 1;
     if (knob_accel_off || range <= 16 || !s)
@@ -283,7 +286,7 @@ static int32_t accel(uint32_t role, int32_t s, int32_t range)
 /* TRACKS page: KNOB 1 SWING (the groove of every track, MPC 50..75 %), 2 LEVEL (0 = mute; the drum
  * track: GLO > DRUMS LEVEL), 3 LEN of its pattern, 4 PAN. A track muted with MUTE (GLO + key, the
  * editor): the first turn of KNOB 2 unmutes it */
-static void tracks_edit(uint32_t slot, int32_t steps)
+UI_SMALL static void tracks_edit(uint32_t slot, int32_t steps)
 {
     track_t *t = TSEL;
     int16_t *vp;
@@ -314,7 +317,7 @@ static void tracks_edit(uint32_t slot, int32_t steps)
 }
 
 /* (1.0, after SLOOP 2.7.2) NOTES: one undo per note edited (its pitch, length, force: EDIT + OCT- brings them back) */
-static void note_mark(void)
+UI_SMALL static void note_mark(void)
 {
     static uint32_t sess, at = 0xFFFFu;
     uint32_t here = ui.cursor | (uint32_t)song.sel << 8;
@@ -324,13 +327,13 @@ static void note_mark(void)
     }
     undo_mark(TSEL, sess);
 }
-static int on_notes_page(void)
+UI_SMALL static int on_notes_page(void)
 {
     return !ui.home && song.seq_mode && cur_page()->scope == SC_STEP && !is_drum(TSEL);
 }
 /* the note's sheet (OCT+ held): KNOB 1 the row, KNOB 2 its value (MOVE: a step a detent); OCT+ acts (SLIDE on / off,
  * COPY: just after it, then MOVE moves the copy; DELETE), OCT- closes */
-static void note_sheet_knob(uint32_t slot, int32_t steps)
+UI_SMALL static void note_sheet_knob(uint32_t slot, int32_t steps)
 {
     track_t *t = TSEL;
     step_t *st = &t->step[ui.cursor];
@@ -372,7 +375,7 @@ static void note_sheet_knob(uint32_t slot, int32_t steps)
     }
     sync_reload = 1;
 }
-static void note_sheet_do(void)                        /* OCT+ tapped in the sheet */
+UI_SMALL static void note_sheet_do(void)                        /* OCT+ tapped in the sheet */
 {
     track_t *t = TSEL;
     uint32_t row = ui.sheet - 1u;
@@ -398,7 +401,7 @@ static void note_sheet_do(void)                        /* OCT+ tapped in the she
     sync_reload = 1;
 }
 /* the NOTES page's knobs (SEQ > NOTES): KNOB 1 NOTE, KNOB 2 PITCH, KNOB 3 LEN, KNOB 4 FORCE */
-static void step_edit(uint32_t slot, int32_t steps)
+UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
 {
     track_t *t = TSEL;
     step_t *st = &t->step[ui.cursor];
@@ -452,7 +455,7 @@ static void step_edit(uint32_t slot, int32_t steps)
 }
 
 /* a new project: every track empty, the default sounds, 90 BPM (TOOLS > NEW) */
-static void project_new(void)
+UI_SMALL static void project_new(void)
 {
     uint32_t i;
     transport_req = 2;
@@ -479,7 +482,7 @@ static void project_new(void)
     ui.force = 1;
 }
 
-static void edit_param(uint32_t slot, int32_t steps)
+UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
 {
     int16_t *vp;
     const page_t *pg = cur_page();
@@ -604,8 +607,8 @@ static void edit_param(uint32_t slot, int32_t steps)
 static uint32_t mi_held[4];
 static uint8_t mi_ok;                                     /* the last frame reached the page's entry (seq_entry: no layer,
                                                          * hold or menu in the way) */
-static uint32_t midi_held(void) { return mi_held[0] | mi_held[1] | mi_held[2] | mi_held[3]; }
-static void midi_entry(void)                              /* (top of ui_input: every frame) */
+UI_SMALL static uint32_t midi_held(void) { return mi_held[0] | mi_held[1] | mi_held[2] | mi_held[3]; }
+UI_SMALL static void midi_entry(void)                              /* (top of ui_input: every frame) */
 {
     {   /* (SLOOP 2.8.2) recording on a MONO / LEGATO sound, a key over a held one: it replaces it. Said once a session */
         static uint8_t mono_said;
@@ -659,7 +662,7 @@ static void midi_entry(void)                              /* (top of ui_input: e
 /* SEQ step entry, acid style: the keys pressed together (POLY: up to 4, MONO:
  * the last one) become the cursor step; releasing all keys moves on (1.0: MENU > SEQ > STEP ADVANCE OFF: the cursor
  * stays). Not while recording or armed: the keys record live then (they would be written twice) */
-static void seq_entry(uint32_t pressed)
+UI_SMALL static void seq_entry(uint32_t pressed)
 {
     track_t *t = TSEL;
     step_t *st = &t->step[ui.cursor];
@@ -715,7 +718,7 @@ static void seq_entry(uint32_t pressed)
 /* HOME: tap on release, hold 0.7 s fires once. t0 = press time | 1,
  * bit 1 = fired (or swallowed: then the release is no tap either) */
 enum { BT_NONE, BT_TAP, BT_HOLD };
-static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
+UI_SMALL static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
 {
     uint32_t tap;
     if ((fm1_in.buttons >> panel.btn[label]) & 1u) {
@@ -733,7 +736,7 @@ static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok
 }
 
 /* a layer button tapped (pressed and let go, nothing touched): its pages, as before the layers */
-static void layer_tap(uint32_t layer)
+UI_SMALL static void layer_tap(uint32_t layer)
 {
     switch (layer) {
     case LY_FX:
@@ -794,7 +797,7 @@ static void layer_tap(uint32_t layer)
  * hands free for the keys and the knobs); any other button but PLAY, REC and OCT- / OCT+ lets it go
  * (and does only that: its press is eaten) */
 static uint8_t home_eat;                                  /* HOME pressed to unlock: its tap is eaten */
-static void layer_unlock(void)
+UI_SMALL static void layer_unlock(void)
 {
     if (ly_lock != LY_PLAY) {
         ly_lock = LY_PLAY;
@@ -806,7 +809,7 @@ static void layer_unlock(void)
  * turning as the button comes up is the layer's, not the page's under it). fm1_ms | 1, 0 = none */
 #define LY_QUIET_MS 250u
 static uint32_t ly_quiet_t;
-static int ly_quiet(void)
+UI_SMALL static int ly_quiet(void)
 {
     if (ly_quiet_t && fm1_ms - (ly_quiet_t & ~1u) >= LY_QUIET_MS)
         ly_quiet_t = 0;
@@ -814,7 +817,7 @@ static int ly_quiet(void)
 }
 /* the layers, once a frame: which one is held (or locked), the taps on release, its keys and knobs.
  * Returns 1 while one is held or locked (the page does not take the knobs then) */
-static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
+UI_SMALL static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
 {
     static uint8_t down[LY_COUNT], used[LY_COUNT];
     static uint32_t t0[LY_COUNT];
@@ -929,7 +932,7 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
 /* the REC screen while armed (ui_studio.c rec_screen_draw): KNOB 1 MODE free / tempo (an empty
  * project), KNOB 2 the length of the selected track (1, 2 or 4 bars), KNOB 3 START note / count;
  * MODE and START are settings of the FM-1 (panel.c lights_word: saved once stopped) */
-static void rec_knobs(void)
+UI_SMALL static void rec_knobs(void)
 {
     static const uint8_t LENS[3] = {16u, 32u, 64u};
     int32_t s;
@@ -965,7 +968,7 @@ static void rec_knobs(void)
 /* REC: acts on the press (no lag). Held 0.7 s the press is undone and a ring fills: held on to the
  * end, the selected track is cleared (EDIT + OCT- brings it back); let go before, nothing happens.
  * (SAVE is the SONG layer: ui_layers.c; tapped, layer_tap) */
-static void holds_input(uint32_t pressed, uint32_t now_ms)
+UI_SMALL static void holds_input(uint32_t pressed, uint32_t now_ms)
 {
     static uint8_t prev_rec, prev_wait, eaten, rec_on, save_on;   /* *_on: pressed, *_t0 its time */
     static uint32_t rec_t0, save_t0;
@@ -1019,7 +1022,7 @@ static void holds_input(uint32_t pressed, uint32_t now_ms)
     (void)sb, (void)save_down, (void)save_on, (void)save_t0;   /* (SAVE is a layer now: ui_layers.c) */
 }
 
-static void ui_input(void)
+UI_SMALL static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
     uint32_t home = btn_hold(&ui.home_t0, B_HOME, now, 1);
@@ -1233,7 +1236,7 @@ static void ui_input(void)
 /* ---------------------------------------------------- panel setup --- */
 /* 30 s without input: give up and keep the old table (a stuck key cannot hang the boot) */
 #define SETUP_IDLE_MS 30000u
-static void panel_setup(void)
+UI_SMALL static void panel_setup(void)
 {
     uint32_t i, used = 0, t0 = fm1_ms;
     const panel_t old = panel;

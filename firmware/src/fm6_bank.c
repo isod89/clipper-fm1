@@ -9,6 +9,9 @@
  * carries it (object 8). An empty slot, or a bank of another layout, plays the init voice. A write stages
  * the bank in proj_tmp (the project load buffer: main loop, as a project load) and goes through st_save; the
  * payload ends 3472 + 256 bytes into its sector, the tail stays erased. Included by project.c (proj_tmp). */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 #define FM6_BANK_MAGIC 0x42364D46u               /* "FM6B" */
 typedef struct {
     uint32_t magic;
@@ -24,9 +27,9 @@ static uint32_t fm6_bank_used;                   /* its used bits */
 #ifndef FM6_BANK_XIP                             /* host tests: the simulated NOR */
 #define FM6_BANK_XIP(copy) fm1_xip_ptr(st_sector(OBJ_FM6BANK, copy) + ST_PAYLOAD_OFF)
 #endif
-static const fm6_bank_t *fm6_bank_flash(uint32_t copy) { return (const fm6_bank_t *)FM6_BANK_XIP(copy & 1u); }
+UI_SMALL static const fm6_bank_t *fm6_bank_flash(uint32_t copy) { return (const fm6_bank_t *)FM6_BANK_XIP(copy & 1u); }
 
-static int fm6_bank_valid(const fm6_bank_t *b)
+UI_SMALL static int fm6_bank_valid(const fm6_bank_t *b)
 {
     uint32_t k, i;
     if (b->magic != FM6_BANK_MAGIC || b->ver != 1u || b->nslot != FM6_BANK_N || (b->used >> FM6_BANK_N))
@@ -39,7 +42,7 @@ static int fm6_bank_valid(const fm6_bank_t *b)
 }
 
 /* eng_fm6.c fm6_bank_read: slot k's record, 0 = there is one */
-static int fm6_bank_get(uint32_t k, uint8_t *pk)
+UI_SMALL static int fm6_bank_get(uint32_t k, uint8_t *pk)
 {
     if (k >= FM6_BANK_N || fm6_bank_cur < 0 || !((fm6_bank_used >> k) & 1u))
         return 1;
@@ -47,10 +50,10 @@ static int fm6_bank_get(uint32_t k, uint8_t *pk)
     return 0;
 }
 
-static int fm6_bank_has(uint32_t k) { return k < FM6_BANK_N && fm6_bank_cur >= 0 && ((fm6_bank_used >> k) & 1u); }
+UI_SMALL static int fm6_bank_has(uint32_t k) { return k < FM6_BANK_N && fm6_bank_cur >= 0 && ((fm6_bank_used >> k) & 1u); }
 
 /* which copy holds a valid bank (the payload st_current leaves in st_buf is the one checked) */
-static void fm6_bank_scan(void)
+UI_SMALL static void fm6_bank_scan(void)
 {
     st_hdr_t h;
     int c = flash_ok ? st_current(OBJ_FM6BANK, &h) : -1;
@@ -67,9 +70,9 @@ static void fm6_bank_scan(void)
 
 #if CLIPPER_SYNTH
 static int fm6_bank_write(uint32_t k, const uint8_t *pk, int fmx);
-static int fmx_store(uint32_t k, const uint8_t *pk) { return fm6_bank_write(k, pk, 1); }   /* (eng_fmx.c STORE) */
+UI_SMALL static int fmx_store(uint32_t k, const uint8_t *pk) { return fm6_bank_write(k, pk, 1); }   /* (eng_fmx.c STORE) */
 #endif
-static void fm6_bank_boot(void)                  /* persist_boot */
+UI_SMALL static void fm6_bank_boot(void)                  /* persist_boot */
 {
     fm6_bank_scan();
 #if CLIPPER_SYNTH
@@ -79,7 +82,7 @@ static void fm6_bank_boot(void)                  /* persist_boot */
 
 /* the parts on a bank slot hear the bank as it is now (fm6_poll reloads them); a factory patch, or the
  * track's own, stays */
-static void fm6_bank_changed(void)
+UI_SMALL static void fm6_bank_changed(void)
 {
     uint32_t t;
     for (t = 0; t < NPART; t++)
@@ -90,7 +93,7 @@ static void fm6_bank_changed(void)
 /* slot k = the packed record pk (0: erase), then the bank to flash: 0 ok, 1 bad slot, 2 flash error (the
  * bank is as it was). The record is stored through unpack / pack: every value in range. Main loop, the song
  * stopped (the caller checks: a sector erase silences the audio) */
-static int fm6_bank_write(uint32_t k, const uint8_t *pk, int fmx)
+UI_SMALL static int fm6_bank_write(uint32_t k, const uint8_t *pk, int fmx)
 {
     fm6_bank_t *b = (fm6_bank_t *)&proj_tmp;
     uint8_t v[FP_SIZE + 1u];
@@ -136,4 +139,4 @@ static int fm6_bank_write(uint32_t k, const uint8_t *pk, int fmx)
 #endif
     return 0;
 }
-static int fm6_bank_put(uint32_t k, const uint8_t *pk) { return fm6_bank_write(k, pk, 0); }
+UI_SMALL static int fm6_bank_put(uint32_t k, const uint8_t *pk) { return fm6_bank_write(k, pk, 0); }

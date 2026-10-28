@@ -14,6 +14,9 @@
  *
  * With -DUP_HOST (host test) only the part above #ifndef UP_HOST is built;
  * it needs nothing but core.h. */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 #define UP_PER_BANK 16u
 #define UP_PMAX 72u                              /* room for P_COUNT to grow */
 #define UP_USED 0xA5u
@@ -57,7 +60,7 @@ _Static_assert(UP_NX == 30u && P_L2RATE == UP_E0V && P_ITYPE == UP_E0V + UP_NX4 
                P_SLOOP == P_SPREAD - 1, "the packed parameters, in order");
 #define UP_XMS 161u                              /* (0.8) a bit of the stream: note / flags hold the MOD SEQ's steps */
 /* bit k of the packed stream: the record's p[UP_NP + k / 16] for k < 160, then p[71]'s high byte */
-static int16_t *up_xword(int16_t *p, uint32_t k, uint32_t *sh)
+UI_SMALL static int16_t *up_xword(int16_t *p, uint32_t k, uint32_t *sh)
 {
     if (k < 160u) {
         *sh = k & 15u;
@@ -66,7 +69,7 @@ static int16_t *up_xword(int16_t *p, uint32_t k, uint32_t *sh)
     *sh = 8u + (k - 160u);
     return &p[UP_PMAX - 1u];
 }
-static void up_xpack(int16_t *p, const int16_t *x)   /* x: P_L2RATE .. P_IMIX -> the record's p */
+UI_SMALL static void up_xpack(int16_t *p, const int16_t *x)   /* x: P_L2RATE .. P_IMIX -> the record's p */
 {
     uint32_t i, j, bit = 0, sh;
     for (i = 0; i < 10u; i++)
@@ -83,7 +86,7 @@ static void up_xpack(int16_t *p, const int16_t *x)   /* x: P_L2RATE .. P_IMIX ->
             }
     }
 }
-static void up_xunpack(const int16_t *p, int16_t *x, uint32_t nx)   /* the first nx of them */
+UI_SMALL static void up_xunpack(const int16_t *p, int16_t *x, uint32_t nx)   /* the first nx of them */
 {
     uint32_t i, j, bit = 0, sh;
     for (i = 0; i < nx; i++) {
@@ -97,7 +100,7 @@ static void up_xunpack(const int16_t *p, int16_t *x, uint32_t nx)   /* the first
 }
 _Static_assert(160u + 8u >= 129u + 32u, "the packed parameters fit the record's spare values");
 /* Clipper's own record: 0 none, 4 of 0.4 / 0.5 (25 packed), 6 of 0.6 (30) */
-static int up_xrec(const up_rec_t *r)
+UI_SMALL static int up_xrec(const up_rec_t *r)
 {
     if (r->np != UP_NP)
         return 0;
@@ -143,7 +146,7 @@ typedef struct {
 _Static_assert(UP_NT == 27u && sizeof(up_tail_t) + sizeof(up_bank_t) <= 3840u, "the user presets' tail fits the sector");
 static up_tail_t up_tail[UP_SLOTS / UP_PER_BANK] __attribute__((section(".pool")));
 static uint8_t up_xt[UP_NT + 2u];                /* the tail bytes of the record up_rec_set made last */
-static const uint8_t *up_tail_of(const up_rec_t *r)   /* a record's tail bytes, 0 = none */
+UI_SMALL static const uint8_t *up_tail_of(const up_rec_t *r)   /* a record's tail bytes, 0 = none */
 {
     uint32_t b;
     for (b = 0; b < UP_SLOTS / UP_PER_BANK; b++)
@@ -151,7 +154,7 @@ static const uint8_t *up_tail_of(const up_rec_t *r)   /* a record's tail bytes, 
             return up_tail[b].magic == UP_TAIL_MAGIC && up_tail[b].v[r - up_bank[b].r][0] == 1u ? up_tail[b].v[r - up_bank[b].r] : 0;
     return up_xt[0] == 1u ? up_xt : 0;
 }
-static const uint8_t *up_side_of(const up_rec_t *r)   /* a record's side bytes, 0 = none */
+UI_SMALL static const uint8_t *up_side_of(const up_rec_t *r)   /* a record's side bytes, 0 = none */
 {
     uint32_t b;
     for (b = 0; b < UP_SLOTS / UP_PER_BANK; b++)
@@ -159,7 +162,7 @@ static const uint8_t *up_side_of(const up_rec_t *r)   /* a record's side bytes, 
             return up_side[b].magic == UP_SIDE_MAGIC ? up_side[b].v[r - up_bank[b].r] : 0;
     return up_xs;
 }
-static int up_has_ms(const up_rec_t *r)          /* note / flags hold the MOD SEQ */
+UI_SMALL static int up_has_ms(const up_rec_t *r)          /* note / flags hold the MOD SEQ */
 {
     uint32_t sh;
     const int16_t *w;
@@ -168,7 +171,7 @@ static int up_has_ms(const up_rec_t *r)          /* note / flags hold the MOD SE
     w = up_xword((int16_t *)r->p, UP_XMS, &sh);
     return ((uint16_t)*w >> sh) & 1u;
 }
-static void up_ms_put(up_rec_t *r, int8_t (*ms)[MSEQ_STEPS])   /* (after up_rec_set) */
+UI_SMALL static void up_ms_put(up_rec_t *r, int8_t (*ms)[MSEQ_STEPS])   /* (after up_rec_set) */
 {
     uint32_t n, sh;
     int16_t *w = up_xword(r->p, UP_XMS, &sh);
@@ -179,7 +182,7 @@ static void up_ms_put(up_rec_t *r, int8_t (*ms)[MSEQ_STEPS])   /* (after up_rec_
     }
     *w = (int16_t)((uint16_t)*w | (uint16_t)(1u << sh));
 }
-static void up_ms_get(const up_rec_t *r, int8_t (*ms)[MSEQ_STEPS])
+UI_SMALL static void up_ms_get(const up_rec_t *r, int8_t (*ms)[MSEQ_STEPS])
 {
     uint32_t n;
     for (n = 0; n < 32u; n++) {
@@ -193,18 +196,18 @@ static void up_ms_get(const up_rec_t *r, int8_t (*ms)[MSEQ_STEPS])
 static up_bank_t up_bank[UP_SLOTS / UP_PER_BANK];
 #endif
 
-static up_rec_t *up_rec(uint32_t k) { return &up_bank[k / UP_PER_BANK].r[k % UP_PER_BANK]; }
+UI_SMALL static up_rec_t *up_rec(uint32_t k) { return &up_bank[k / UP_PER_BANK].r[k % UP_PER_BANK]; }
 
-static int up_valid(const up_rec_t *r)
+UI_SMALL static int up_valid(const up_rec_t *r)
 {
     return r->used == UP_USED && r->ver == UP_VER && r->engine < NENGINES && r->np >= 8u && r->np <= UP_PMAX &&
            r->name[0];
 }
 
-static int up_used(uint32_t k) { return k < UP_SLOTS && up_valid(up_rec(k)); }
+UI_SMALL static int up_used(uint32_t k) { return k < UP_SLOTS && up_valid(up_rec(k)); }
 
 /* today's values v (P_COUNT) into record r (np, p[]) */
-static void up_rec_set(up_rec_t *r, const int16_t *v)
+UI_SMALL static void up_rec_set(up_rec_t *r, const int16_t *v)
 {
     uint32_t i;
 #if CLIPPER_SYNTH
@@ -232,7 +235,7 @@ static void up_rec_set(up_rec_t *r, const int16_t *v)
 }
 
 /* the record's values in today's P_* order (mapped by count, see the top); def = the defaults */
-static void up_params(const up_rec_t *r, int16_t *out, const int16_t *def)
+UI_SMALL static void up_params(const up_rec_t *r, int16_t *out, const int16_t *def)
 {
     uint32_t i, nc = r->np - 8u, ncm = nc < UP_E0V ? nc : UP_E0V;   /* (the common ones it has, by place) */
     for (i = 0; i < P_E0; i++)
@@ -263,7 +266,7 @@ static void up_params(const up_rec_t *r, int16_t *out, const int16_t *def)
 #endif
 }
 
-static void up_bank_check(uint32_t b, int len)  /* after loading bank b (len bytes, -1 = none): wrong shape -> empty */
+UI_SMALL static void up_bank_check(uint32_t b, int len)  /* after loading bank b (len bytes, -1 = none): wrong shape -> empty */
 {
     up_bank_t *bk = &up_bank[b];
     if (len != (int)sizeof *bk || bk->magic != UP_BANK_MAGIC || bk->rsize != sizeof(up_rec_t) ||
@@ -273,7 +276,7 @@ static void up_bank_check(uint32_t b, int len)  /* after loading bank b (len byt
 #if CLIPPER_SYNTH
 /* a stored bank (len bytes of src, -1 = none) into bank b: today's as it is, Clipper 0.4's (232-byte records, np 86,
  * P_E0 at 78) made today's record by record. 1: it was 0.4's (to be written back, so SLOOP reads it too) */
-static int up_bank_import(uint32_t b, const uint8_t *src, int len)
+UI_SMALL static int up_bank_import(uint32_t b, const uint8_t *src, int len)
 {
     up_bank_t *bk = &up_bank[b];
     const up_bank_t *h = (const up_bank_t *)src;
@@ -310,7 +313,7 @@ static int up_bank_import(uint32_t b, const uint8_t *src, int len)
 }
 #endif
 
-static int up_name_ok(const uint8_t *s, uint32_t n)   /* 1..12 printable ASCII */
+UI_SMALL static int up_name_ok(const uint8_t *s, uint32_t n)   /* 1..12 printable ASCII */
 {
     uint32_t i;
     if (!n || n > 12u)
@@ -321,7 +324,7 @@ static int up_name_ok(const uint8_t *s, uint32_t n)   /* 1..12 printable ASCII *
     return 1;
 }
 
-static void up_name(uint32_t k, char *b)       /* upper case, 0-terminated: b holds 13 */
+UI_SMALL static void up_name(uint32_t k, char *b)       /* upper case, 0-terminated: b holds 13 */
 {
     const up_rec_t *r = up_rec(k);
     uint32_t i;
@@ -330,7 +333,7 @@ static void up_name(uint32_t k, char *b)       /* upper case, 0-terminated: b ho
     b[i] = 0;
 }
 
-static void up_pat_norm(uint8_t *note, uint8_t *flags)   /* tie: no note; rest: no flags */
+UI_SMALL static void up_pat_norm(uint8_t *note, uint8_t *flags)   /* tie: no note; rest: no flags */
 {
     *note &= 127u;
     if (*flags & 4u) {
@@ -341,7 +344,7 @@ static void up_pat_norm(uint8_t *note, uint8_t *flags)   /* tie: no note; rest: 
     }
 }
 
-static void up_pat_from(up_rec_t *r, const step_t *st)   /* the first 16 steps -> the pattern */
+UI_SMALL static void up_pat_from(up_rec_t *r, const step_t *st)   /* the first 16 steps -> the pattern */
 {
     uint32_t i;
     for (i = 0; i < 16u; i++) {
@@ -351,7 +354,7 @@ static void up_pat_from(up_rec_t *r, const step_t *st)   /* the first 16 steps -
     }
 }
 
-static int up_pat_empty(const up_rec_t *r)
+UI_SMALL static int up_pat_empty(const up_rec_t *r)
 {
     uint32_t i;
     for (i = 0; i < 16u; i++)
@@ -362,7 +365,7 @@ static int up_pat_empty(const up_rec_t *r)
 
 /* UP_PUT arguments: slot, engine, name, P_COUNT x v14, 16 x (note, flags) -> *r (values not yet
  * clamped); 0 ok, 1 bad arguments. *slot gets the slot byte when there is one. */
-static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_t *slot)
+UI_SMALL static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_t *slot)
 {
     uint32_t i, n, k;
     if (na < 3u)
@@ -395,12 +398,12 @@ static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_t *slot)
 }
 
 #ifndef UP_HOST
-static const param_desc_t *up_desc(uint32_t e, uint32_t i)
+UI_SMALL static const param_desc_t *up_desc(uint32_t e, uint32_t i)
 {
     return i >= P_E0 ? &ENGINES[e]->edit[i - P_E0] : &TP[i];
 }
 
-static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for its engine */
+UI_SMALL static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for its engine */
 {
     int16_t def[P_COUNT];
     uint32_t i;
@@ -411,7 +414,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for
         v[i] = (int16_t)clamp(v[i], up_desc(r->engine, i)->min, up_desc(r->engine, i)->max);
 }
 
-static void up_boot(void)                      /* persist_boot: the banks from flash */
+UI_SMALL static void up_boot(void)                      /* persist_boot: the banks from flash */
 {
 #if FELUCCA_FLASH
     uint32_t b;
@@ -449,7 +452,7 @@ static void up_boot(void)                      /* persist_boot: the banks from f
 }
 
 /* record k = *r (0: erase), then the bank to flash: 0 ok, 2 flash error, 3 no flash (kept in RAM) */
-static int up_put(uint32_t k, const up_rec_t *r)
+UI_SMALL static int up_put(uint32_t k, const up_rec_t *r)
 {
     up_bank_t *bk = &up_bank[k / UP_PER_BANK];
     bk->magic = UP_BANK_MAGIC;
@@ -508,7 +511,7 @@ static int up_put(uint32_t k, const up_rec_t *r)
     return 3;
 }
 
-static void up_slot_label(char *b, uint32_t k)  /* "U07" */
+UI_SMALL static void up_slot_label(char *b, uint32_t k)  /* "U07" */
 {
     b[0] = 'U';
     b[1] = (char)('0' + (k + 1u) / 10u);
@@ -518,7 +521,7 @@ static void up_slot_label(char *b, uint32_t k)  /* "U07" */
 
 /* the selected part's sound -> slot k; name 0 or "": engine name + slot number ("ANALOG 07").
  * 1 = the drum track is selected (it has no sound to store) */
-static int up_store(uint32_t k, const char *name)
+UI_SMALL static int up_store(uint32_t k, const char *name)
 {
     up_rec_t r;
     uint32_t i;
@@ -553,7 +556,7 @@ static int up_store(uint32_t k, const char *name)
  * PAN, MUTE: the TRACKS faders) and its pattern parameters (param_kept). LIVE: the pattern
  * stored in the record is not loaded: changing the sound never changes the sequence.
  * 0 ok, 1 empty (or the drum track is selected) */
-static int up_load_to(track_t *t, uint32_t k)
+UI_SMALL static int up_load_to(track_t *t, uint32_t k)
 {
     const up_rec_t *r;
     int16_t v[P_COUNT];
@@ -597,9 +600,9 @@ static int up_load_to(track_t *t, uint32_t k)
     ui.force = 1;
     return 0;
 }
-static int up_load(uint32_t k) { return up_load_to(TSEL, k); }
+UI_SMALL static int up_load(uint32_t k) { return up_load_to(TSEL, k); }
 
-static uint32_t up_count(void)                 /* used slots */
+UI_SMALL static uint32_t up_count(void)                 /* used slots */
 {
     uint32_t k, n = 0;
     for (k = 0; k < UP_SLOTS; k++)
@@ -607,7 +610,7 @@ static uint32_t up_count(void)                 /* used slots */
     return n;
 }
 
-static uint32_t up_nth(uint32_t n)             /* slot of the n-th used one (n < up_count()) */
+UI_SMALL static uint32_t up_nth(uint32_t n)             /* slot of the n-th used one (n < up_count()) */
 {
     uint32_t k;
     for (k = 0; k < UP_SLOTS; k++)
@@ -616,7 +619,7 @@ static uint32_t up_nth(uint32_t n)             /* slot of the n-th used one (n <
     return 0;
 }
 
-static uint32_t up_rank(uint32_t slot)         /* used slots before it */
+UI_SMALL static uint32_t up_rank(uint32_t slot)         /* used slots before it */
 {
     uint32_t k, n = 0;
     for (k = 0; k < slot && k < UP_SLOTS; k++)
@@ -625,7 +628,7 @@ static uint32_t up_rank(uint32_t slot)         /* used slots before it */
 }
 
 /* SAVE > USER page actions, with the message in the top bar */
-static void up_ui(uint32_t op, uint32_t k)     /* 0 load, 1 erase, 2 save */
+UI_SMALL static void up_ui(uint32_t op, uint32_t k)     /* 0 load, 1 erase, 2 save */
 {
     char l[4];
     int rc;

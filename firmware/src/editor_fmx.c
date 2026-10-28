@@ -9,10 +9,13 @@
  *   FMX_STORE  slot, pack7 (128)    -> slot, rc        into bank slot `slot` (0..26), marked FMX's (fm6_bank.c); the
  *              song stopped (rc 3 while it plays: the flash write silences the audio a moment)
  * rc: 0 ok, 1 bad request, 2 empty slot / flash error, 3 the song plays. Every byte of the patch 0..127. */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 enum { ED_FMX_GET = 90, ED_FMX_PUT, ED_FMX_STORE };
 enum { ED_FMX_TRACK, ED_FMX_FACTORY, ED_FMX_BANK };
 
-static int ed_fmx_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
+UI_SMALL static int ed_fmx_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
 {
     fmx_patch_t p;
     uint32_t rc = 0;
@@ -80,8 +83,8 @@ enum { ED_MSEQ_GET = 93, ED_MSEQ_PUT, ED_TUNE_GET, ED_TUNE_PUT };
  *             cent, each above the one before; from a Scala .scl: the editor converts it. 1.0: the A4 byte optional,
  *             without it A4 stays as it is; 0.9 took no such byte, so the editor sends it only when GET gave one)
  * rc: 0 ok, 1 bad request */
-static uint32_t ed_u21(const uint8_t *a) { return (uint32_t)(a[0] & 127u) | (uint32_t)(a[1] & 127u) << 7 | (uint32_t)(a[2] & 127u) << 14; }
-static int ed_mseq_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
+UI_SMALL static uint32_t ed_u21(const uint8_t *a) { return (uint32_t)(a[0] & 127u) | (uint32_t)(a[1] & 127u) << 7 | (uint32_t)(a[2] & 127u) << 14; }
+UI_SMALL static int ed_mseq_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
 {
     uint32_t i, rc;
     switch (cmd) {

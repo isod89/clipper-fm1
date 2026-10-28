@@ -61,6 +61,7 @@ SLOOP is a groovebox. **Clipper is a synthesizer** with 23 engines and 407 sound
 - **No crash on FMX when ALG is turned past 32** (FM KICK and the other FMX sounds: the screen read past the end of a names list and showed FELUCCA CRASH).
 - **The second core, hardened**: a backup over USB could crash an FM-1 running on two cores (a red screen until a power cycle). Every job core 1 runs is now checked: a wrong one is refused and the FM-1 goes on with one core until it is switched off, and a fault beside core 1 no longer freezes it. If a unit still does it: HOME (held) → SYS → 2ND CORE OFF.
 - **A quick tap no longer flashes a layer**: SEQ, EDIT, ARP and GLO held show their layer after 0.35 s (it was 0.14 s), so a tap opens the pages cleanly.
+- **Room in the flash**: SLOOP 2.8.3's fixes did not fit the FM-1 any more. The screens', the editor's and the projects' code is now compiled for size (as SLOOP does since 2.7), and the drum machine Clipper inherited from SLOOP, which it never played (no pages, silent, hidden in the editor), is left out of the FM-1 image: 16 KB. The metronome stays.
 - **The EWI plays one voice**: with GLO > MIDI 2 > EWI on, the instrument plays one note at a time, legato, whatever its VOICE (an EWI is a monophonic instrument: a soft note no longer adds a second one at full level); the notes' velocity is fixed and the breath alone shapes the level. (Asked for by an EWI player.)
 
 ## New in 1.1: ultra-compatible MIDI, the SLOOP 2.7.2 sequencer, and a clean reverb

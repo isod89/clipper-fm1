@@ -18,6 +18,9 @@
  *
  * Built on the host too (tests/project_test.c, -DPROJ_HOST): the part above the #ifndef
  * PROJ_HOST needs core.h, params.c (TP), drums.c (the lanes), the engines and trk_def_engine (ui.c). */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 #define PROJ_MAGIC 0x46554E35u                 /* "FUN5": format 4 + per-step nudge, parameter locks, fill conditions (SLOOP 2.4) */
 #define PROJ_MAGIC_V4 0x46554E34u              /* "FUN4": four tracks, P_COUNT parameters each, 10-byte steps; read only */
 #define PROJ_MAGIC_V3 0x46554E33u              /* "FUN3": SLOOP 1.x; read only */
@@ -67,13 +70,13 @@ _Static_assert(P_COUNT == PROJ_NP || (CLIPPER_SYNTH && P_COUNT == PROJ_NP + PROJ
 #define PROJ_MS_MARK 64u                              /* track 4: the byte after the steps */
 _Static_assert(PROJ_XA == 25u && PROJ_XI == 5u && PROJ_XS == 6u && PROJ_X9 == 2u && P_MSRATE == P_IMIX + 1 &&
                PROJ_XM3 < 3u * NLOCK && PROJ_X9_MARK < 3u * NLOCK, "the project's Clipper bytes in tracks 3 and 4's lock slots");
-static uint32_t proj_xs_word(const int16_t *p)        /* RATE (4 bits) START (1) LEN - 1 (4) SMTH (7) SPICE (7) DICE (7) */
+UI_SMALL static uint32_t proj_xs_word(const int16_t *p)        /* RATE (4 bits) START (1) LEN - 1 (4) SMTH (7) SPICE (7) DICE (7) */
 {
     return (uint32_t)clamp(p[P_MSRATE], 0, 15) | (uint32_t)clamp(p[P_MSKEY], 0, 1) << 4 |
            (uint32_t)clamp(p[P_MSLEN] - 1, 0, 15) << 5 | (uint32_t)clamp(p[P_MSSMTH], 0, 127) << 9 |
            (uint32_t)clamp(p[P_SPICE], 0, 127) << 16 | (uint32_t)clamp(p[P_DICE], 0, 127) << 23;
 }
-static int32_t proj_xs_val(uint32_t w, uint32_t i)   /* value P_MSRATE + i of a word */
+UI_SMALL static int32_t proj_xs_val(uint32_t w, uint32_t i)   /* value P_MSRATE + i of a word */
 {
     switch (i) {
     case 0: return (int32_t)(w & 15u);
@@ -86,7 +89,7 @@ static int32_t proj_xs_val(uint32_t w, uint32_t i)   /* value P_MSRATE + i of a 
 }
 _Static_assert(P_MSLEN == P_MSRATE + 1 && P_MSSMTH == P_MSRATE + 2 && P_MSKEY == P_MSRATE + 3 && P_SPICE == P_MSRATE + 4 &&
                P_DICE == P_MSRATE + 5, "proj_xs_val's order");
-static void proj_bytes_put(plock_t *lk, const uint8_t *b)
+UI_SMALL static void proj_bytes_put(plock_t *lk, const uint8_t *b)
 {
     uint32_t k;
     for (k = 0; k < NLOCK; k++) {
@@ -95,7 +98,7 @@ static void proj_bytes_put(plock_t *lk, const uint8_t *b)
         lk[k].val = (int16_t)(b[3u * k + 1u] | b[3u * k + 2u] << 8);
     }
 }
-static void proj_ms_put(plock_t *lk)                  /* track 4's lock slots: both sounds' steps */
+UI_SMALL static void proj_ms_put(plock_t *lk)                  /* track 4's lock slots: both sounds' steps */
 {
     uint8_t b[3u * NLOCK];
     uint32_t j, n;
@@ -113,11 +116,11 @@ static void proj_ms_put(plock_t *lk)                  /* track 4's lock slots: b
     b[PROJ_X9_MARK] = CLIPPER_PROJ_MARK_09;
     proj_bytes_put(lk, b);
 }
-static uint32_t proj_ext_at(uint32_t j, uint32_t k)   /* the byte of track j's value k (P_E0 - PROJ_E0 of them) */
+UI_SMALL static uint32_t proj_ext_at(uint32_t j, uint32_t k)   /* the byte of track j's value k (P_E0 - PROJ_E0 of them) */
 {
     return k < PROJ_XA ? j * PROJ_XA + k : PROJ_XM1 + 1u + j * PROJ_XI + (k - PROJ_XA);
 }
-static void proj_ext_put(plock_t *lk)
+UI_SMALL static void proj_ext_put(plock_t *lk)
 {
     uint8_t b[3u * NLOCK];
     uint32_t j, k;
@@ -134,11 +137,11 @@ static void proj_ext_put(plock_t *lk)
     b[PROJ_XM3] = CLIPPER_PROJ_MARK_08;
     proj_bytes_put(lk, b);
 }
-static uint32_t proj_ext_byte(const plock_t *lk, uint32_t n)
+UI_SMALL static uint32_t proj_ext_byte(const plock_t *lk, uint32_t n)
 {
     return n % 3u ? ((uint16_t)lk[n / 3u].val >> (8u * (n % 3u - 1u))) & 255u : lk[n / 3u].param;
 }
-static int proj_ext_get(const plock_t *lk, uint32_t j, uint32_t k)   /* track j's value k, or -1 (none) */
+UI_SMALL static int proj_ext_get(const plock_t *lk, uint32_t j, uint32_t k)   /* track j's value k, or -1 (none) */
 {
     uint32_t i;
     for (i = 0; i < NLOCK; i++)
@@ -158,7 +161,7 @@ static int proj_ext_get(const plock_t *lk, uint32_t j, uint32_t k)   /* track j'
     }
     return (int)proj_ext_byte(lk, proj_ext_at(j, k));
 }
-static int proj_x9_get(const plock_t *lk, uint32_t j, uint32_t k)   /* (0.9) track j's VINTAGE / LOOP, or -1 */
+UI_SMALL static int proj_x9_get(const plock_t *lk, uint32_t j, uint32_t k)   /* (0.9) track j's VINTAGE / LOOP, or -1 */
 {
     uint32_t i;
     for (i = 0; i < NLOCK; i++)
@@ -168,7 +171,7 @@ static int proj_x9_get(const plock_t *lk, uint32_t j, uint32_t k)   /* (0.9) tra
         return -1;
     return (int)proj_ext_byte(lk, PROJ_X9_AT + PROJ_X9 * j + k);
 }
-static int proj_ms_get(const plock_t *lk, uint32_t j, track_t *t)   /* track j's steps from track 4's: 0, -1 none */
+UI_SMALL static int proj_ms_get(const plock_t *lk, uint32_t j, track_t *t)   /* track j's steps from track 4's: 0, -1 none */
 {
     uint32_t i, n;
     for (i = 0; i < NLOCK; i++)
@@ -204,14 +207,14 @@ typedef struct {                               /* one track; the drum track igno
 #define PROJ_X10_CK (PROJ_X10_DM + 1u)
 #define CLIPPER_PROJ_MARK_10 0xCAu
 _Static_assert(PROJ_X10 == 27u && PROJ_X10_CK < NSTEP, "1.0's values in track 3's nudges");
-static uint32_t proj_x10_ck(const int8_t *m)
+UI_SMALL static uint32_t proj_x10_ck(const int8_t *m)
 {
     uint32_t i, c = 0x5Au;
     for (i = 0; i < PROJ_X10_CK; i++)
         c = ((c << 1) | (c >> 7)) ^ (uint8_t)m[i];
     return c & 255u;
 }
-static void proj_x10_put(proj_trk_t *d, const step_t *st)   /* (track 3's own steps: none, or nothing put) */
+UI_SMALL static void proj_x10_put(proj_trk_t *d, const step_t *st)   /* (track 3's own steps: none, or nothing put) */
 {
     uint32_t j, n;
     int8_t *m = d->micro;
@@ -226,7 +229,7 @@ static void proj_x10_put(proj_trk_t *d, const step_t *st)   /* (track 3's own st
     m[PROJ_X10_DM] = (int8_t)(uint8_t)clamp(song.g[G_DMODE], GP[G_DMODE].min, GP[G_DMODE].max);
     m[PROJ_X10_CK] = (int8_t)proj_x10_ck(m);
 }
-static int proj_x10_ok(const int8_t *m)
+UI_SMALL static int proj_x10_ok(const int8_t *m)
 {
     return (uint8_t)m[0] == CLIPPER_PROJ_MARK_10 && (uint8_t)m[PROJ_X10_CK] == proj_x10_ck(m);
 }
@@ -315,7 +318,7 @@ _Static_assert(sizeof(project_v2_t) == 2552u && sizeof(project_v1_t) == 688u && 
 _Static_assert(sizeof(project_t) <= 3840u, "format 5 fits one flash object (storage.c ST_PAYLOAD_MAX)");
 project_t proj_slot[4] __attribute__((section(".noinit")));
 
-static uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n bytes */
+UI_SMALL static uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n bytes */
 {
     const uint8_t *b = (const uint8_t *)p;
     uint32_t i, s = 0x811C9DC5u;
@@ -323,12 +326,12 @@ static uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n bytes */
         s = (s ^ b[i]) * 16777619u;
     return s;
 }
-static uint32_t proj_sum(const project_t *p) { return proj_hash(p, sizeof *p - 4u); }
-static int proj_ok(const project_t *q) { return q->magic == PROJ_MAGIC && q->size == sizeof *q && q->sum == proj_sum(q); }
+UI_SMALL static uint32_t proj_sum(const project_t *p) { return proj_hash(p, sizeof *p - 4u); }
+UI_SMALL static int proj_ok(const project_t *q) { return q->magic == PROJ_MAGIC && q->size == sizeof *q && q->sum == proj_sum(q); }
 
 /* ---- old formats -> format 5 */
 /* an old step into a synth step (no level, no ratchet) */
-static void step_from8(step_t *d, const step8_t *s)
+UI_SMALL static void step_from8(step_t *d, const step8_t *s)
 {
     memcpy(d->note, s->note, 4);
     d->n = s->n;
@@ -338,7 +341,7 @@ static void step_from8(step_t *d, const step8_t *s)
     d->lvl = d->rat = 0;
 }
 /* an old drum step (GM notes) into the drum track's lanes; its velocity / accent -> their level */
-static void dstep_from8(dstep_t *d, const step8_t *s)
+UI_SMALL static void dstep_from8(dstep_t *d, const step8_t *s)
 {
     uint32_t i, lvl = (s->flags & SF_ACCENT) || s->vel > 115u ? LV_HARD : !s->vel ? LV_NORM : vel_lvl(s->vel);
     memset(d, 0, sizeof *d);
@@ -347,10 +350,10 @@ static void dstep_from8(dstep_t *d, const step8_t *s)
     for (i = 0; i < s->n && i < 4u; i++)
         dstep_set(d, lane_of_note(s->note[i] & 127u), lvl, 0);
 }
-static int16_t swing_from_v3(int32_t v) { return (int16_t)clamp((v * 4 + 2) / 5, 0, 100); }   /* /250 -> /200 */
+UI_SMALL static int16_t swing_from_v3(int32_t v) { return (int16_t)clamp((v * 4 + 2) / 5, 0, 100); }   /* /250 -> /200 */
 
 /* the globals of formats 1..3 (G_* unchanged since; any added later: their defaults) */
-static void proj_g_from_old(int16_t *g, const int16_t *g2)
+UI_SMALL static void proj_g_from_old(int16_t *g, const int16_t *g2)
 {
     uint32_t i;
     for (i = 0; i < PROJ_NG; i++)
@@ -359,7 +362,7 @@ static void proj_g_from_old(int16_t *g, const int16_t *g2)
 }
 
 /* no nudge, no lock, no condition (formats 1..4) */
-static void proj_trk_plain(proj_trk_t *d)
+UI_SMALL static void proj_trk_plain(proj_trk_t *d)
 {
     uint32_t k;
     memset(d->micro, 0, sizeof d->micro);
@@ -372,7 +375,7 @@ static void proj_trk_plain(proj_trk_t *d)
 }
 
 /* a track of format 3 -> today's (by id up to P_SLDEPTH; P_E0.. moved) */
-static void proj_trk_from_v3(proj_trk_t *d, const proj_trk_v3_t *s, int drum)
+UI_SMALL static void proj_trk_from_v3(proj_trk_t *d, const proj_trk_v3_t *s, int drum)
 {
     uint32_t k, nc = PROJ_NP_V3 - 8u;
     proj_trk_plain(d);
@@ -393,7 +396,7 @@ static void proj_trk_from_v3(proj_trk_t *d, const proj_trk_v3_t *s, int drum)
 }
 
 /* a track of formats 1 and 2 -> format 3 (mapped by count, see the top) */
-static void proj_trk_v2_to_v3(proj_trk_v3_t *d, const proj_trk_v2_t *s, int drum)
+UI_SMALL static void proj_trk_v2_to_v3(proj_trk_v3_t *d, const proj_trk_v2_t *s, int drum)
 {
     uint32_t k, nc = PROJ_NP_V2 - 8u;
     for (k = 0; k < PROJ_NP_V3 - 8u; k++)
@@ -406,7 +409,7 @@ static void proj_trk_v2_to_v3(proj_trk_v3_t *d, const proj_trk_v2_t *s, int drum
 }
 
 /* a format 4 project (n bytes in *v4) -> slot q as format 5: the same, no nudge, no lock, no condition, no FILTER */
-static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
+UI_SMALL static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
 {
     uint32_t i;
     if (n != (int)sizeof *v4 || v4->magic != PROJ_MAGIC_V4 || v4->size != sizeof *v4 ||
@@ -438,7 +441,7 @@ static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
  * has no room for it: SLOOP's tracks 3 and 4 are its own), per slot (0..3: proj_slot, 4: any other), for proj_apply */
 static int16_t proj_v6_ins[5][5];
 static uint8_t proj_v6_ins_ok[5];
-static uint32_t proj_v6_at(const project_t *q)
+UI_SMALL static uint32_t proj_v6_at(const project_t *q)
 {
     uint32_t i;
     for (i = 0; i < 4u; i++)
@@ -446,7 +449,7 @@ static uint32_t proj_v6_at(const project_t *q)
             return i;
     return 4u;
 }
-static int proj_from_v6(project_t *q, const project_v6_t *v6, int n)
+UI_SMALL static int proj_from_v6(project_t *q, const project_v6_t *v6, int n)
 {
     uint32_t i, k;
     if (n != (int)sizeof *v6 || v6->magic != PROJ_MAGIC_V6 || v6->size != sizeof *v6 ||
@@ -494,7 +497,7 @@ static int proj_from_v6(project_t *q, const project_v6_t *v6, int n)
 }
 
 /* a format 3 project -> slot q as format 5 */
-static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
+UI_SMALL static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
 {
     uint32_t i;
     memset(q, 0, sizeof *q);
@@ -506,7 +509,7 @@ static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
         proj_trk_from_v3(&q->t[i], &v3->t[i], i == TRK_DRUM);
     q->sum = proj_sum(q);
 }
-static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
+UI_SMALL static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
 {
     if (n != (int)sizeof *v3 || v3->magic != PROJ_MAGIC_V3 || v3->size != sizeof *v3 ||
         v3->sum != proj_hash(v3, sizeof *v3 - 4u))
@@ -517,7 +520,7 @@ static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
 
 static project_v3_t proj_v3_tmp;               /* (formats 1, 2: through format 3) */
 /* a format 2 project (n bytes in *v2) -> slot q as format 5 */
-static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
+UI_SMALL static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
 {
     project_v3_t *v3 = &proj_v3_tmp;
     uint32_t i;
@@ -535,7 +538,7 @@ static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
 
 /* a format 1 project (n bytes in *v1) -> slot q as format 5: the instrument becomes track 1,
  * tracks 2..4 start empty (their sounds as at power-on) */
-static int proj_from_v1(project_t *q, const project_v1_t *v1, int n)
+UI_SMALL static int proj_from_v1(project_t *q, const project_v1_t *v1, int n)
 {
     project_v3_t *v3 = &proj_v3_tmp;
     uint32_t i;
@@ -563,7 +566,7 @@ static int proj_from_v1(project_t *q, const project_v1_t *v1, int n)
 }
 
 /* n bytes of a stored project (any format) -> slot q as format 5; 0 = not a project */
-static int proj_import(project_t *q, const void *b, int n)
+UI_SMALL static int proj_import(project_t *q, const void *b, int n)
 {
     proj_v6_ins_ok[proj_v6_at(q)] = 0;                 /* (proj_from_v6 sets it again) */
     if (n == (int)sizeof *q && proj_ok((const project_t *)b)) {
@@ -576,7 +579,7 @@ static int proj_import(project_t *q, const void *b, int n)
 }
 
 /* ---- the working project <-> a project_t */
-static void proj_capture(project_t *p)        /* what is playing now, as a project */
+UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, as a project */
 {
     uint32_t i;
     memset(p, 0, sizeof *p);
@@ -619,7 +622,7 @@ static void proj_capture(project_t *p)        /* what is playing now, as a proje
 /* a project's tracks (and its globals, all: a load; or only the drum level / reverb / delay: a song
  * section) into the working one, every value back inside its range. The audio ISR must not run
  * meanwhile (the song sections: called from it; a load: IRQ off) */
-static void proj_apply(const project_t *p, int all)
+UI_SMALL static void proj_apply(const project_t *p, int all)
 {
     uint32_t i, k;
     for (i = 0; i < PROJ_NG; i++)
@@ -734,7 +737,7 @@ static union {
     project_v2_t v2;
     project_v1_t v1;
 } proj_tmp;
-static void proj_fetch(uint32_t slot)
+UI_SMALL static void proj_fetch(uint32_t slot)
 {
     project_t *q = &proj_slot[slot & 3u];
     int n = st_load(OBJ_PROJECT0 + (slot & 3u), &proj_tmp, sizeof proj_tmp);
@@ -744,7 +747,7 @@ static void proj_fetch(uint32_t slot)
 #include "fm6_bank.c"                           /* the FM6 patch bank (eng_fm6.c PTCH B1..B27): staged in proj_tmp */
 #endif
 
-static void project_save(uint32_t slot)
+UI_SMALL static void project_save(uint32_t slot)
 {
     project_t *p = &proj_slot[slot & 3u];
 #if FELUCCA_ARRANGER
@@ -761,7 +764,7 @@ static void project_save(uint32_t slot)
 }
 
 /* a project into the working one: the transport stops, everything sounding is released */
-static void project_apply(const project_t *p)
+UI_SMALL static void project_apply(const project_t *p)
 {
     uint32_t k;
     transport_req = 2;
@@ -780,7 +783,7 @@ static void project_apply(const project_t *p)
     ui.force = 1;
 }
 
-static void project_load(uint32_t slot)
+UI_SMALL static void project_load(uint32_t slot)
 {
     project_t *p = &proj_slot[slot & 3u];
 #if FELUCCA_ARRANGER
@@ -806,7 +809,7 @@ static void project_load(uint32_t slot)
 static project_t autosave_buf __attribute__((section(".pool")));
 static uint32_t autosave_hash, autosave_ms, autosave_checked;
 
-static int audio_quiet(void)
+UI_SMALL static int audio_quiet(void)
 {
     uint32_t p, i;
     for (p = 0; p < NPART; p++)
@@ -819,7 +822,7 @@ static int audio_quiet(void)
     return 1;
 }
 
-static void autosave_tick(void)                /* main loop */
+UI_SMALL static void autosave_tick(void)                /* main loop */
 {
 #if FELUCCA_FLASH
     uint32_t h, now = fm1_ms;
@@ -837,7 +840,7 @@ static void autosave_tick(void)                /* main loop */
 #endif
 }
 
-static void autosave_resume(void)              /* power-on: the project as it was left (felucca_init) */
+UI_SMALL static void autosave_resume(void)              /* power-on: the project as it was left (felucca_init) */
 {
 #if FELUCCA_FLASH
     project_t *q = &autosave_buf;
@@ -885,7 +888,7 @@ typedef struct {
 } side2_t;
 _Static_assert(sizeof(clip_side_t) == 44u && sizeof(side2_t) <= ST_SIDE_MAX, "the side record");
 static side2_t side_out, side_saved;
-static void side_fill(side2_t *s)                    /* what the side record holds now */
+UI_SMALL static void side_fill(side2_t *s)                    /* what the side record holds now */
 {
     clip_side_t *r = &s->a;
     memset(s, 0, sizeof *s);
@@ -904,7 +907,7 @@ static void side_fill(side2_t *s)                    /* what the side record hol
     s->tu.crc = st_crc32(&s->tu, sizeof s->tu - 4u);
 #endif
 }
-static void side_take(const side2_t *s)              /* a side record read back: each part when it checks out */
+UI_SMALL static void side_take(const side2_t *s)              /* a side record read back: each part when it checks out */
 {
     const clip_side_t *r = &s->a;
     if (r->magic == CLIP_SIDE_MAGIC && r->crc == st_crc32(r, sizeof *r - 4u)) {
@@ -954,7 +957,7 @@ static persist_t persist_saved;
 static void dsu_boot(void);
 #endif
 
-static void persist_boot(void)                    /* before settings_init / panel_init */
+UI_SMALL static void persist_boot(void)                    /* before settings_init / panel_init */
 {
 #if FELUCCA_ARRANGER
     arr_defaults(&arrangement);
@@ -1036,7 +1039,7 @@ static void persist_boot(void)                    /* before settings_init / pane
 #endif
 }
 
-static int project_used(uint32_t slot) { return proj_ok(&proj_slot[slot & 3u]); }
+UI_SMALL static int project_used(uint32_t slot) { return proj_ok(&proj_slot[slot & 3u]); }
 
 #if FELUCCA_FLASH
 /* SLOOP 2.5: the settings object holds the SYN kits after persist_t (drum_synth.c dsu): firmware before 2.5 reads
@@ -1048,7 +1051,7 @@ static int project_used(uint32_t slot) { return proj_ok(&proj_slot[slot & 3u]); 
 static uint8_t set_tail[SET_TAIL_MAX];
 static uint32_t set_tail_n;
 _Static_assert(sizeof(persist_t) + sizeof(dsu_bank_t) + SET_TAIL_MAX <= ST_PAYLOAD_MAX, "the settings object");
-static int settings_write(const persist_t *p)
+UI_SMALL static int settings_write(const persist_t *p)
 {
     int rc;
     if (!dsu_valid(&dsu))
@@ -1064,7 +1067,7 @@ static int settings_write(const persist_t *p)
     dsu_dirty = 0;
     return 0;
 }
-static void dsu_boot(void)                          /* the SYN kits from the settings object, else the defaults */
+UI_SMALL static void dsu_boot(void)                          /* the SYN kits from the settings object, else the defaults */
 {
     st_hdr_t h;
     dsu_defaults();
@@ -1083,7 +1086,7 @@ static void dsu_boot(void)                          /* the SYN kits from the set
 }
 #endif
 
-static void persist_fill(persist_t *p)              /* the settings as they are now */
+UI_SMALL static void persist_fill(persist_t *p)              /* the settings as they are now */
 {
     memset(p, 0, sizeof *p);
     p->magic = PERSIST_MAGIC;
@@ -1097,7 +1100,7 @@ static void persist_fill(persist_t *p)              /* the settings as they are 
 #endif
 }
 
-static void settings_save(void)
+UI_SMALL static void settings_save(void)
 {
 #if FELUCCA_FLASH
     persist_t p;
@@ -1117,7 +1120,7 @@ _Static_assert(sizeof(project_t) <= ST_PAYLOAD_MAX, "project does not fit one fl
 
 /* ---- backup restore (editor.c BK_PUT): each object checked as a load checks it, then written through the
  * same A/B commit as a save. rc: 0 ok, 2 not a valid object, 3 stop the song first, 4 flash */
-static int panel_valid(const panel_t *q)           /* a permutation of the buttons and of the knobs */
+UI_SMALL static int panel_valid(const panel_t *q)           /* a permutation of the buttons and of the knobs */
 {
     uint32_t i, b = 0, e = 0;
     if (q->magic != PANEL_MAGIC)
@@ -1135,7 +1138,7 @@ static int panel_valid(const panel_t *q)           /* a permutation of the butto
     return 1;
 }
 
-static uint32_t settings_restore(const void *raw, uint32_t n)
+UI_SMALL static uint32_t settings_restore(const void *raw, uint32_t n)
 {
     persist_t p;
     if (n != sizeof p && n != PERSIST_SIZE_V22)
@@ -1171,7 +1174,7 @@ static uint32_t settings_restore(const void *raw, uint32_t n)
 }
 
 /* slot 0..3 (n 0: empty), or 4: the working project (loaded now) */
-static uint32_t project_restore(uint32_t slot, const void *raw, uint32_t n)
+UI_SMALL static uint32_t project_restore(uint32_t slot, const void *raw, uint32_t n)
 {
     if (song.playing || transport_req)
         return 3;
@@ -1198,7 +1201,7 @@ static uint32_t project_restore(uint32_t slot, const void *raw, uint32_t n)
 }
 #endif
 #if FELUCCA_ARRANGER
-static void arrangement_save(void)
+UI_SMALL static void arrangement_save(void)
 {
     if (song.playing || transport_req) { ui_message("STOP BEFORE SAVE"); return; }
     settings_save();
@@ -1214,7 +1217,7 @@ static void arrangement_save(void)
 /* ---- live sections (SAVE + key, ui_layers.c). A section is a project slot (A..D = 1..4): stored into RAM
  * at once (playing too), written to flash once the transport is stopped and nothing sounds (an erase
  * stops the audio for ~50 ms); a song recorded with SONG REC is saved the same way. */
-static void section_store(uint32_t s)
+UI_SMALL static void section_store(uint32_t s)
 {
     s &= 3u;
     fm1_irq_off();                                      /* (the audio ISR may be applying a section) */
@@ -1223,13 +1226,13 @@ static void section_store(uint32_t s)
     fm1_irq_on();
     sec_dirty |= (uint8_t)(1u << s);
 }
-static void section_load(uint32_t s)                    /* stopped: the section is the loop now */
+UI_SMALL static void section_load(uint32_t s)                    /* stopped: the section is the loop now */
 {
     s &= 3u;
     project_apply(&proj_slot[s]);
     live_sec = (int8_t)s;
 }
-static void sections_write(void)                        /* the dirty sections and song into flash */
+UI_SMALL static void sections_write(void)                        /* the dirty sections and song into flash */
 {
     uint32_t i;
 #if FELUCCA_FLASH
@@ -1248,7 +1251,7 @@ static void sections_write(void)                        /* the dirty sections an
 }
 /* before an intentional reset (an update, UPDATE MODE, UBOOT from the host): the audio is stopped, so
  * whatever is only in RAM goes to flash now: the live sections, the song, the working project */
-static void persist_flush_now(void)
+UI_SMALL static void persist_flush_now(void)
 {
     sections_write();
 #if FELUCCA_FLASH
@@ -1259,7 +1262,7 @@ static void persist_flush_now(void)
     }
 #endif
 }
-static void sections_flush(void)                        /* main loop */
+UI_SMALL static void sections_flush(void)                        /* main loop */
 {
     static uint32_t tried;
     if (srec_done) {

@@ -4,6 +4,9 @@
  * Art: assets/icons.png + icons.json -> build/gen/felucca_icons.h
  * (tools/gen_icons.py). Which icon a parameter gets is decided here, by its label.
  * FELUCCA_ICONS=0 turns them off (labels get their full width back). */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 #include "felucca_icons.h"
 #ifndef FELUCCA_ICONS
 #define FELUCCA_ICONS (FELUCCA_ICONS_N > 0)   /* on when the atlas has icons */
@@ -67,7 +70,7 @@ static const icon_map_t ICON_MAP[] = {
     {"SLCR", ICON_SLICE}, {"PAT", ICON_STEPS}, {"DEPTH", ICON_MIX},   /* SLICER page (RATE: param_icon) */
 };
 
-static uint32_t icon_for_label(const char *l)
+UI_SMALL static uint32_t icon_for_label(const char *l)
 {
     uint32_t i;
     if (!l || !l[0] || l[0] == '-')
@@ -86,7 +89,7 @@ static const icon_map_t WAVE_ICON[] = {
     {"RTRP", ICON_W_RTRP},
 };
 
-static uint32_t param_icon(const param_desc_t *d, int32_t v)
+UI_SMALL static uint32_t param_icon(const param_desc_t *d, int32_t v)
 {
     uint32_t i;
     if (!d)
@@ -114,7 +117,7 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
 }
 
 /* engine name (ENGINES[]->name, or "DRUM") -> icon */
-static uint32_t engine_icon(const char *name)
+UI_SMALL static uint32_t engine_icon(const char *name)
 {
     static const icon_map_t M[] = {
         {"ANALOG", ICON_WAVE}, {"DIGITAL", ICON_ALGORITHM}, {"PHASE", ICON_PHASE}, {"LOFI", ICON_BITS},
@@ -131,7 +134,7 @@ static uint32_t engine_icon(const char *name)
 }
 
 /* 2-bit icon, ink levels 1..3 = a third .. all of colour c (blended onto black, like cv_text) */
-static void cv_icon(int32_t x, int32_t y, uint32_t id, uint16_t c)
+UI_SMALL static void cv_icon(int32_t x, int32_t y, uint32_t id, uint16_t c)
 {
     uint16_t ramp[4];
     uint32_t r = c >> 11, g = (c >> 5) & 63u, b = c & 31u, a, i, j;
@@ -149,8 +152,8 @@ static void cv_icon(int32_t x, int32_t y, uint32_t id, uint16_t c)
         }
 }
 #else
-static uint32_t icon_for_label(const char *l) { (void)l; return ICON_NONE; }
-static uint32_t param_icon(const param_desc_t *d, int32_t v) { (void)d; (void)v; return ICON_NONE; }
-static uint32_t engine_icon(const char *name) { (void)name; return ICON_NONE; }
-static void cv_icon(int32_t x, int32_t y, uint32_t id, uint16_t c) { (void)x; (void)y; (void)id; (void)c; }
+UI_SMALL static uint32_t icon_for_label(const char *l) { (void)l; return ICON_NONE; }
+UI_SMALL static uint32_t param_icon(const param_desc_t *d, int32_t v) { (void)d; (void)v; return ICON_NONE; }
+UI_SMALL static uint32_t engine_icon(const char *name) { (void)name; return ICON_NONE; }
+UI_SMALL static void cv_icon(int32_t x, int32_t y, uint32_t id, uint16_t c) { (void)x; (void)y; (void)id; (void)c; }
 #endif

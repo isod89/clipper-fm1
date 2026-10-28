@@ -1465,6 +1465,8 @@ static void mix_block(int32_t *out, uint32_t n)
     duck_block(n * (uint32_t)song.g[G_BPM]);
     for (i = 0; i < NPART; i++)
         mix_part(&trk[i], n);
+#if !CLIPPER_SYNTH || BOARD_SMK37                                  /* (Clipper 1.2: no drum machine: nothing to render; its sounds are
+                                                     * out of the image) */
     drums.a0 = TDRUM->att;                              /* the drum track's mute / solo fade */
     drums.a1 = 32767 - gain_next(TDRUM);
     {
@@ -1489,6 +1491,7 @@ static void mix_block(int32_t *out, uint32_t n)
             slicer_drums(mix_l, mix_r, send_r, send_d, n);   /* drums_render, through the SLICER when on */
         }
     }
+#endif
     click_render(mix_l, mix_r, n);                      /* the metronome: its own voice (drums.c), any kit, any mute */
     fx_buses(send_c, send_d, send_r, wet_l, wet_r, n);
     for (i = 0; i < n; i++) {

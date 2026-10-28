@@ -330,6 +330,11 @@ static const uint8_t DSU_DEF[DSU_N] = {0, 1, 5, 12};   /* 808, 909, TRAP, TECHNO
 static void dsu_from_factory(uint32_t k, uint32_t src)
 {
     dsu_kit_t *u = &dsu.k[k % DSU_N];
+#if CLIPPER_SYNTH && !BOARD_SMK37   /* (Clipper 1.2 on the FM-1: no drum machine (the SMK-37 plays drums on its outer keys): the 32 kits are left out of the image, 11.6 KB of flash; the settings
+                     * object keeps its shape: empty kits) */
+    memset(u, 0, sizeof *u);
+    u->src = (uint8_t)(src % DS_NKITS);
+#else
     const dkit_t *f = &DS_KITS[src % DS_NKITS];
     uint32_t i;
     memset(u, 0, sizeof *u);
@@ -338,6 +343,7 @@ static void dsu_from_factory(uint32_t k, uint32_t src)
     u->crush = f->crush;
     u->src = (uint8_t)(src % DS_NKITS);
     memcpy(u->s, f->s, sizeof u->s);
+#endif
 }
 static void dsu_defaults(void)
 {

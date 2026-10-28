@@ -7,10 +7,13 @@
  *           hy_set_patch: sanitised), until PTCH turns or a sound loads
  * rc: 0 ok, 1 bad request. The patch is the C layout of hy_patch_t (signed bytes as two's complement): the
  * editor packs and unpacks it field by field (editor.html HY). */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 enum { ED_HY_GET = 77, ED_HY_PUT };
 enum { ED_HY_TRACK, ED_HY_FACTORY };
 
-static int ed_hy_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
+UI_SMALL static int ed_hy_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
 {
     hy_patch_t p;
     uint32_t rc;

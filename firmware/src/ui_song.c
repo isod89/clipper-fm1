@@ -1,10 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Compact 240 x 240 song-order editor. All changes and flash saves require
  * stopped transport. The four existing project slots are sections A..D. */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 static uint8_t song_cursor, song_store_armed, song_load_armed;
 static uint32_t song_store_deadline;
-static int on_song_page(void) { return !ui.home && cur_page()->scope == SC_SONG; }
-static void song_sane(void)                         /* a bad chain (blank / damaged settings): defaults */
+UI_SMALL static int on_song_page(void) { return !ui.home && cur_page()->scope == SC_SONG; }
+UI_SMALL static void song_sane(void)                         /* a bad chain (blank / damaged settings): defaults */
 {
     uint32_t i, ok = arrangement.count >= 1u && arrangement.count <= ARR_STEPS;
     for (i = 0; ok && i < arrangement.count; i++)
@@ -16,7 +19,7 @@ static void song_sane(void)                         /* a bad chain (blank / dama
 }
 
 /* SONG: the chain of sections (A..D in the track colours), bars of each, where the song is */
-static void song_screen_draw(void)
+UI_SMALL static void song_screen_draw(void)
 {
     song_sane();
     uint32_t i, start = song_cursor > 3u ? song_cursor - 3u : 0u;
@@ -84,7 +87,7 @@ static void song_screen_draw(void)
     cv_blit(0, 172);
 }
 
-static void song_screen_input(uint32_t pressed, uint32_t home)
+UI_SMALL static void song_screen_input(uint32_t pressed, uint32_t home)
 {
     uint32_t k, b;
     int32_t steps;

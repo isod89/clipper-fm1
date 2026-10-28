@@ -8,6 +8,9 @@
 /* ------------------------------------------------------------ menu --- */
 /* 0.7 (after SLOOP 2.7): SCREEN + KNOB ACCEL, AUDIO + USB RATE (four rows: the fourth takes the help's place), MIDI
  * (CLOCK OUT, MPE), SYS (2ND CORE, CALIBRATION, ABOUT) */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 #if CLIPPER_SYNTH                                  /* Clipper 0.4: MPE (MIDI: OFF or the member channels' bend range) */
 enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_LOWCUT, MI_USB, MI_SERIAL, MI_RATE, MI_ADV, MI_CLKOUT,
        MI_MPE, MI_CPU1, MI_PANEL, MI_ABOUT, MI_COUNT };
@@ -25,7 +28,7 @@ static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "LI
 enum { MS_SCREEN, MS_LIGHTS, MS_AUDIO, MS_SEQ, MS_MIDI, MS_SYSTEM, MS_COUNT };
 static const char *const MS_NAME[MS_COUNT] = {"SCREEN", "LIGHTS", "AUDIO", "SEQ", "MIDI", "SYS"};   /* (AUDIO: and USB) */
 static const uint8_t MS_FIRST[MS_COUNT + 1] = {MI_COLOR, MI_LIGHTS, MI_LOWCUT, MI_ADV, MI_CLKOUT, MI_CPU1, MI_COUNT};   /* rows of each */
-static int mi_cpu1_have(void)                      /* the second core is running (cpu1.c; the host tests have none) */
+UI_SMALL static int mi_cpu1_have(void)                      /* the second core is running (cpu1.c; the host tests have none) */
 {
 #if FELUCCA_CPU1
     return cpu1_state == CPU1_OK;
@@ -39,17 +42,17 @@ static const char *const KEYS_NAME[KEYS_N] = {"OFF", "C KEYS", "WHITE KEYS", "AL
 #define MI_Y0 26                                   /* the first row, under the section tabs */
 #define MI_DY 50                                   /* a row: the label, the value in large type */
 
-static uint32_t mi_sec(uint32_t i)                 /* the section of item i */
+UI_SMALL static uint32_t mi_sec(uint32_t i)                 /* the section of item i */
 {
     uint32_t k = 0;
     while (k + 1u < MS_COUNT && i >= MS_FIRST[k + 1u])
         k++;
     return k;
 }
-static uint32_t mi_row(uint32_t i) { return i - MS_FIRST[mi_sec(i)]; }   /* its row: KNOB 1 + row sets it */
+UI_SMALL static uint32_t mi_row(uint32_t i) { return i - MS_FIRST[mi_sec(i)]; }   /* its row: KNOB 1 + row sets it */
 
 /* item i's value as shown, and its colour */
-static const char *mi_value(uint32_t i, uint16_t *c)
+UI_SMALL static const char *mi_value(uint32_t i, uint16_t *c)
 {
     *c = C_HI;
     switch (i) {
@@ -77,7 +80,7 @@ static const char *mi_value(uint32_t i, uint16_t *c)
     }
 }
 
-static void draw_menu(void)
+UI_SMALL static void draw_menu(void)
 {
     uint32_t i, pass, sec = mi_sec(ui.menu_sel % MI_COUNT);
     uint32_t sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u +
@@ -184,14 +187,14 @@ static void draw_menu(void)
     }
 }
 
-static void enc_drop(void)                             /* knob turns nobody takes */
+UI_SMALL static void enc_drop(void)                             /* knob turns nobody takes */
 {
     uint32_t k;
     for (k = 0; k < NE; k++)
         panel_enc(k);
 }
 
-static void menu_close(void)
+UI_SMALL static void menu_close(void)
 {
     if (song.playing || transport_req)
         settings_later = 1;                            /* (a flash write stops the audio: once stopped) */
@@ -203,7 +206,7 @@ static void menu_close(void)
 }
 
 /* item i: a knob turned s (> 0 right, < 0 left), or 0: OCT+ (steps round, toggles, or opens) */
-static void mi_set(uint32_t i, int32_t s)
+UI_SMALL static void mi_set(uint32_t i, int32_t s)
 {
     switch (i) {
     case MI_COLOR:                                     /* both ways round; OCT+ the next */
@@ -292,7 +295,7 @@ static void mi_set(uint32_t i, int32_t s)
 }
 
 /* menu: SELECT the section, KNOB 1..3 its settings, PRESETS the cursor, OCT+ ok, OCT- close (ABOUT -> the section) */
-static void menu_input(uint32_t pressed)
+UI_SMALL static void menu_input(uint32_t pressed)
 {
     int32_t s;
     uint32_t k, ok = (pressed >> panel.btn[B_OCTUP]) & 1u, back = (pressed >> panel.btn[B_OCTDN]) & 1u;

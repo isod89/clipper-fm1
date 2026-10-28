@@ -10,6 +10,9 @@
  *   RANDOM   AMT (how far from the sound now), WHAT (EDIT: the engine's 8 values; +ENV: and the envelopes; ALL: and
  *            the LFO, its destinations and the sends), RAND, BACK (the sound before the last RAND).
  * Track 2's settings are its own parameters (core.h P_LYMODE ..); the others live here (not in the project). */
+#ifndef UI_SMALL
+#define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
+#endif
 enum { X_LYMODE, X_LYSOUND, X_LYSPLIT, X_LYLEVEL, X_LYOCT, X_LYPAN, X_LYFILT, X_LYSWAP,
        X_MORPH, X_SETA, X_SETB, X_RNDAMT, X_RNDWHAT, X_RNDGO, X_RNDBACK,
        X_MSLOT, X_MSRC, X_MDST, X_MAMT,                /* (X_MSRC..X_MAMT: the slot's P_MnSRC..P_MnAMT) */
@@ -111,7 +114,7 @@ typedef struct {
 } syn_snap_t;
 static syn_snap_t syn_a, syn_b, syn_back;
 
-static void snap_take(syn_snap_t *s, const track_t *t)
+UI_SMALL static void snap_take(syn_snap_t *s, const track_t *t)
 {
     s->ok = 1;
     s->eng = t->eng_req;
@@ -121,7 +124,7 @@ static void snap_take(syn_snap_t *s, const track_t *t)
     memcpy(s->ms, t->ms, sizeof s->ms);
 }
 /* a snapshot's sound into t (its mix and pattern parameters stay: param_kept) */
-static void snap_put(track_t *t, const syn_snap_t *s)
+UI_SMALL static void snap_put(track_t *t, const syn_snap_t *s)
 {
     uint32_t i;
     if (!s->ok)
@@ -158,12 +161,12 @@ static hist_t hist_cur, hist_orig, hist_cmp;          /* the step now (committed
 static uint32_t hist_head, hist_n, hist_r, hist_t0;   /* hist_head: the next free place; hist_t0: the last change */
 static uint8_t hist_pend, hist_ready, hist_cmp_on, hist_edited, hist_load_req;
 static int16_t hist_pos;                              /* the UNDO knob: 0 the newest, -k k steps back */
-static void hist_take(hist_t *h)
+UI_SMALL static void hist_take(hist_t *h)
 {
     snap_take(&h->s, &trk[0]);
     h->fx = fmx_cur[0];
 }
-static int hist_same(const hist_t *a, const hist_t *b)  /* the same sound (its mix, pattern and key aside) */
+UI_SMALL static int hist_same(const hist_t *a, const hist_t *b)  /* the same sound (its mix, pattern and key aside) */
 {
     uint32_t i;
     if (a->s.eng != b->s.eng)
@@ -175,7 +178,7 @@ static int hist_same(const hist_t *a, const hist_t *b)  /* the same sound (its m
         return 0;                                     /* (0.8: a MOD SEQ step) */
     return a->s.eng != ENGI_FMX || !memcmp(&a->fx, &b->fx, sizeof a->fx);
 }
-static void hist_put(const hist_t *h)
+UI_SMALL static void hist_put(const hist_t *h)
 {
     snap_put(&trk[0], &h->s);
     if (h->s.eng == ENGI_FMX) {                       /* its patch as it was (not PTCH's again: fmx_block) */
@@ -187,7 +190,7 @@ static void hist_put(const hist_t *h)
         fm1_irq_on();
     }
 }
-static void hist_push(void)                           /* hist_cur one step back; nothing forward any more */
+UI_SMALL static void hist_push(void)                           /* hist_cur one step back; nothing forward any more */
 {
     hist[hist_head % HIST_N] = hist_cur;
     hist_head = (hist_head + 1u) % HIST_N;
@@ -195,7 +198,7 @@ static void hist_push(void)                           /* hist_cur one step back;
         hist_n++;
     hist_r = 0;
 }
-static void hist_commit(void)                         /* what changed since the last step: a step */
+UI_SMALL static void hist_commit(void)                         /* what changed since the last step: a step */
 {
     hist_t now;
     hist_take(&now);
@@ -207,7 +210,7 @@ static void hist_commit(void)                         /* what changed since the 
 }
 /* before a sound is loaded (ui.c apply_preset_to, upreset.c up_load_to): the edits a step of their own, and the
  * sound loaded the new ORIG (hist_poll, the next frame) */
-static void hist_before_load(void)
+UI_SMALL static void hist_before_load(void)
 {
     if (!CLIPPER_SYNTH || !hist_ready || hist_load_req)
         return;                                       /* (a load under way this frame: one step for all of it) */
@@ -216,7 +219,7 @@ static void hist_before_load(void)
     hist_commit();
     hist_load_req = 1;
 }
-static void hist_poll(void)                           /* once a UI frame */
+UI_SMALL static void hist_poll(void)                           /* once a UI frame */
 {
     hist_t now;
     if (!hist_ready) {
@@ -269,7 +272,7 @@ static void hist_poll(void)                           /* once a UI frame */
     }
     hist_edited = (uint8_t)!hist_same(&now, &hist_orig);
 }
-static void hist_step(int32_t d)                      /* d < 0: undo -d steps; > 0: redo */
+UI_SMALL static void hist_step(int32_t d)                      /* d < 0: undo -d steps; > 0: redo */
 {
     if (hist_cmp_on)
         return;
@@ -293,7 +296,7 @@ static void hist_step(int32_t d)                      /* d < 0: undo -d steps; >
     hist_put(&hist_cur);
     hist_pos = (int16_t)-(int32_t)hist_r;
 }
-static void hist_compare(int on)
+UI_SMALL static void hist_compare(int on)
 {
     if (on == hist_cmp_on)
         return;
@@ -310,7 +313,7 @@ static void hist_compare(int on)
     }
 }
 /* what changed from step a to step b, in a few letters: the first two values that differ (their labels) */
-static void hist_label(const hist_t *a, const hist_t *b, char *out, uint32_t cap)
+UI_SMALL static void hist_label(const hist_t *a, const hist_t *b, char *out, uint32_t cap)
 {
     uint32_t i, n = 0;
     out[0] = 0;
@@ -344,14 +347,14 @@ static void hist_label(const hist_t *a, const hist_t *b, char *out, uint32_t cap
 }
 
 /* a value's kind for MORPH and RANDOM: 1 a switch (the names), 0 a continuous one */
-static const param_desc_t *syn_pdesc(uint32_t eng, uint32_t i)
+UI_SMALL static const param_desc_t *syn_pdesc(uint32_t eng, uint32_t i)
 {
     return i >= P_E0 ? &ENGINES[eng % NENGINES]->edit[i - P_E0] : &TP[i];
 }
-static int syn_switch(const param_desc_t *d) { return d->fmt == F_ENUM || d->fmt == F_ONOFF || d->names; }
+UI_SMALL static int syn_switch(const param_desc_t *d) { return d->fmt == F_ENUM || d->fmt == F_ONOFF || d->names; }
 
 /* the values MORPH and RANDOM move: the sound, not its mix, pattern, key or voice mode */
-static int syn_sound_param(uint32_t i)
+UI_SMALL static int syn_sound_param(uint32_t i)
 {
     if (i >= P_E0)
         return i <= P_E7;
@@ -359,7 +362,7 @@ static int syn_sound_param(uint32_t i)
            !(i >= P_AMODE && i <= P_AORDER);
 }
 
-static void syn_morph_apply(int32_t m)
+UI_SMALL static void syn_morph_apply(int32_t m)
 {
     track_t *t = &trk[0];
     uint32_t i;
@@ -385,7 +388,7 @@ static void syn_morph_apply(int32_t m)
 
 /* ---- the randomizer */
 static uint32_t syn_seed = 0x9E3779B9u;
-static uint32_t syn_rnd(void)
+UI_SMALL static uint32_t syn_rnd(void)
 {
     syn_seed ^= syn_seed << 13;
     syn_seed ^= syn_seed >> 17;
@@ -393,7 +396,7 @@ static uint32_t syn_rnd(void)
     return syn_seed;
 }
 /* the range a random value may take: kept musical (no endless attack, no siren of pitch modulation) */
-static void syn_rnd_range(uint32_t i, const param_desc_t *d, int32_t *lo, int32_t *hi)
+UI_SMALL static void syn_rnd_range(uint32_t i, const param_desc_t *d, int32_t *lo, int32_t *hi)
 {
     *lo = d->min;
     *hi = d->max;
@@ -417,7 +420,7 @@ static void syn_rnd_range(uint32_t i, const param_desc_t *d, int32_t *lo, int32_
             (*hi)--;
     }
 }
-static int syn_rnd_in(uint32_t i, uint32_t what)
+UI_SMALL static int syn_rnd_in(uint32_t i, uint32_t what)
 {
     int edit = i >= P_E0 && i <= P_E7;
     int env = (i >= P_ATK && i <= P_REL) || (i >= P_ED_FLT && i <= P_ED_SHP) || (i >= P_E2ATK && i <= P_E2REL);
@@ -440,7 +443,7 @@ static int syn_rnd_in(uint32_t i, uint32_t what)
 /* 0.7, RANDOM > WHAT OPS on FMX: the operators of the part's patch, as the opsix's randomizer: ratios from the musical
  * ones, the modulators' levels, the envelopes, now and then a wave; the carriers' levels and the routing's shape kept,
  * its amounts moved. AMT how far */
-static void syn_rnd_fmx(int32_t amt)
+UI_SMALL static void syn_rnd_fmx(int32_t amt)
 {
     static const uint8_t RAT[12] = {1, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 14};
     static const uint8_t WV[6] = {FXW_SINE, FXW_SINE, FXW_SINE, FXW_TRI, FXW_HALF, FXW_SAW};
@@ -473,7 +476,7 @@ static void syn_rnd_fmx(int32_t amt)
     fmx_dirty[0] = 1;
     fm1_irq_on();
 }
-static void syn_randomize(void)
+UI_SMALL static void syn_randomize(void)
 {
     track_t *t = &trk[0];
     int32_t amt = xv[X_RNDAMT];
@@ -505,7 +508,7 @@ static void syn_randomize(void)
 }
 
 /* ---- the layer: its sound by the place in the preset list (as PRESETS: factory by kind, then the user's) */
-static uint32_t layer_pos(uint32_t *total)
+UI_SMALL static uint32_t layer_pos(uint32_t *total)
 {
     const track_t *t = &trk[1];
     uint32_t i, cur = 0;
@@ -519,7 +522,7 @@ static uint32_t layer_pos(uint32_t *total)
     *total = NBANK + up_count();
     return cur;
 }
-static void layer_load(uint32_t n)
+UI_SMALL static void layer_load(uint32_t n)
 {
     uint32_t k, e = base_at(n, &k);                     /* (0.7: the list without the favourites) */
     track_t *t = &trk[1];
@@ -533,7 +536,7 @@ static void layer_load(uint32_t n)
     ui.force = 1;
 }
 /* track 1 and track 2 trade their sounds (each keeps its mix, its pattern and the layer's settings) */
-static void layer_swap(void)
+UI_SMALL static void layer_swap(void)
 {
     track_t *a = &trk[0], *b = &trk[1];
     syn_snap_t sa, sb;
@@ -575,7 +578,7 @@ static void layer_swap(void)
 }
 
 /* params.c page_desc: a value of the synth's pages */
-static const param_desc_t *syn_desc(uint32_t id, int16_t **valp)
+UI_SMALL static const param_desc_t *syn_desc(uint32_t id, int16_t **valp)
 {
     track_t *l = &trk[1];
     switch (id) {
@@ -680,7 +683,7 @@ static const param_desc_t *syn_desc(uint32_t id, int16_t **valp)
 }
 
 /* ui_input.c: a value of the synth's pages was turned to *vp */
-static void syn_changed(uint32_t id, int16_t *vp)
+UI_SMALL static void syn_changed(uint32_t id, int16_t *vp)
 {
     switch (id) {
     case X_LYSOUND:
@@ -868,7 +871,7 @@ static void syn_changed(uint32_t id, int16_t *vp)
 }
 
 /* once a UI frame: MIDI CC 20 moves MORPH */
-static void syn_tick(void)
+UI_SMALL static void syn_tick(void)
 {
     hist_poll();                                      /* (0.7) the sound's history */
     int16_t r = syn_morph_req;
@@ -889,7 +892,7 @@ static void syn_tick(void)
 }
 
 /* the graph of the LAYER pages: the layer's sound and the keyboard (the split) */
-static void graph_layer(void)
+UI_SMALL static void graph_layer(void)
 {
     const track_t *l = &trk[1];
     const engine_t *e = ENGINES[l->eng_req % NENGINES];
@@ -923,7 +926,7 @@ static void graph_layer(void)
     cv_text(8, 58, &FONT_S, "1", C_HI);
     cv_text(24, 69, &FONT_S, "2", m ? TE_COL[1] : C_DIM);
 }
-static void graph_morph(void)
+UI_SMALL static void graph_morph(void)
 {
     static const char *const AB[2] = {"A", "B"};
     uint32_t k;
@@ -946,7 +949,7 @@ static void graph_morph(void)
     cv_text(226, 56, &FONT_S, "B", C_DIM);
 }
 /* 0.7, the graph of the UNDO page: the sound's steps, the newest on top, the one playing lit */
-static void graph_hist(void)
+UI_SMALL static void graph_hist(void)
 {
     uint32_t rows = 6u, k, total = hist_n + hist_r + 1u, now = hist_n;   /* index 0 the oldest; now: hist_cur */
     uint32_t top = total - 1u;
@@ -994,7 +997,7 @@ static void graph_hist(void)
 
 /* the graph of the MATRIX page: the six slots, source > destination and amount, the one turned lit */
 /* 0.8: a SHAPE into lane l of the MOD SEQ, over its LEN steps (SHIFT: one step to the left, INVRT: upside down) */
-static void mseq_fill(track_t *t, uint32_t l, uint32_t f)
+UI_SMALL static void mseq_fill(track_t *t, uint32_t l, uint32_t f)
 {
     uint32_t i, len = (uint32_t)clamp(t->p[P_MSLEN], 1, 16);
     int8_t *q = t->ms[l % MSEQ_LANES], first = q[0];
@@ -1021,7 +1024,7 @@ static void mseq_fill(track_t *t, uint32_t l, uint32_t f)
 }
 /* the MOD SEQ's pages: the selected lane large (the step being edited white, the one playing lit, past LEN dim), the
  * four lanes small below it */
-static void graph_mseq(void)
+UI_SMALL static void graph_mseq(void)
 {
     const track_t *t = TSEL;
     uint32_t i, l, lane = (uint32_t)clamp(xv[X_QLANE], 1, 4) - 1u, st = (uint32_t)clamp(xv[X_QSTEP], 1, 16) - 1u;
@@ -1050,7 +1053,7 @@ static void graph_mseq(void)
         }
     }
 }
-static void graph_matrix(void)
+UI_SMALL static void graph_matrix(void)
 {
     const track_t *t = TSEL;
     uint32_t k, sel = (uint32_t)clamp(xv[X_MSLOT], 1, (int32_t)MX_SLOTS) - 1u, k0 = sel / 6u * 6u;   /* (1.0: the six
@@ -1079,7 +1082,7 @@ static void graph_matrix(void)
 }
 /* FMX's pages: the routing as a grid (rows: TO, columns: FROM; a square's size its amount; the diagonal feedback),
  * the output column, the operators' waves and ratios; the operator / connection being edited white */
-static void graph_fmx(void)
+UI_SMALL static void graph_fmx(void)
 {
     const fmx_patch_t *p = &fmx_cur[song.sel % NPART];
     const fmx_eff_t *f = &fmx_eff[song.sel % NPART];
@@ -1123,7 +1126,7 @@ static void graph_fmx(void)
         cv_text(214, y - 1, &FONT_S, N_FMX_MODE[(o->mode & 3u) % FXM_N], (o->mode & 3u) ? C_HI : C_DIM);
     }
 }
-static uint32_t fmx_sig(void)
+UI_SMALL static uint32_t fmx_sig(void)
 {
     const uint8_t *b = (const uint8_t *)&fmx_cur[song.sel % NPART];
     uint32_t i, h = 2166136261u;
@@ -1131,7 +1134,7 @@ static uint32_t fmx_sig(void)
         h = (h ^ b[i]) * 16777619u;
     return h ^ (uint32_t)xv[X_FOP] * 31u ^ (uint32_t)xv[X_FTO] * 37u ^ (uint32_t)xv[X_FFROM] * 41u;
 }
-static uint32_t syn_sig(void)
+UI_SMALL static uint32_t syn_sig(void)
 {
     const track_t *l = &trk[1];
     return fmx_sig() + (uint32_t)l->eng_req * 131u + l->preset * 7u + l->user * 3u + (uint32_t)l->p[P_LYMODE] * 17u +

@@ -3,6 +3,16 @@
 /* Small-canvas renderer (no full framebuffer). Draw text/lines into
  * an off-screen strip, then blit it in one DMA transfer. Pixels are stored
  * byte-swapped (the panel takes RGB565 big-endian). */
+/* UI_SMALL: the screens', the editor's and the projects' functions (ui*.c, icons.c, editor*.c, project.c, upreset.c,
+ * console.c; never the audio path) are compiled for size (clang minsize, as -Oz), as SLOOP 2.7 does. Clipper 1.2: SLOOP
+ * 2.8.3's fixes made the FM-1 image overflow the flash (XIP) by 4.4 KB; this gives it back with nothing taken out. */
+#ifndef UI_SMALL
+#if defined(__clang__)
+#define UI_SMALL __attribute__((minsize))
+#else
+#define UI_SMALL
+#endif
+#endif
 typedef struct {               /* proportional, see tools/gen_font.py */
     uint8_t h;
     uint8_t pad;               /* bitmap starts this many pixels left of the pen */

@@ -3505,7 +3505,9 @@ static void events_block(uint32_t n)
     if (pr)
         mi_pen[0] = mi_pen[1] = mi_pen[2] = mi_pen[3] = 0;   /* (1.0: the MIDI pen's notes held: never stuck either) */
     keyboard_block();
+#if !CLIPPER_SYNTH || BOARD_SMK37   /* (Clipper on the FM-1: no drum machine) */
     drum_audition_poll();                             /* (the editor's DRUM SYNTH page) */
+#endif
     strum_block(n);                                   /* (voice.c: the strummed notes due) */
     while (mi_r != mi_w) {                            /* USB-MIDI (and TRS) in */
         uint32_t pkt = midi_in_q[mi_r % MQ], st = (pkt >> 8) & 0xF0u, ch = (pkt >> 8) & 0x0Fu;
