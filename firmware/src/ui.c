@@ -6,7 +6,7 @@
 #define UI_SMALL                                   /* (gfx.c: minsize on the device; a test alone: nothing) */
 #endif
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "CLIPPER 1.2"  /* the synthesizer firmware for the FM-1 (from SLOOP 2.5, based on Felucca) */
+#define FELUCCA_VERSION "CLIPPER 1.3"  /* the synthesizer firmware for the FM-1 (from SLOOP 2.5, based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);

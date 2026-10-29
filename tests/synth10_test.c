@@ -11,10 +11,10 @@
  *   REVERB   ROOM, PLATE, HALL, SHIMMER: bounded, dying away; HALL longer than PLATE; SHIMMER an octave up in its tail
  *   DELAY    PING: the first echo left (TIME), the second right (2 x TIME); TAPE: bounded at full feedback, its echoes
  *            swung (not MONO's); a change of MODE under a sounding line: no click
- *   STORE    projects (every 1.0 value of both sounds, the delay's MODE; with track 3's steps there: their defaults, the
- *            steps' nudges kept; a 0.9 project: the defaults); user presets (every value back, the sources 16..19 of
- *            slots 1..6 by their fifth bit; the record SLOOP reads the same with or without the 1.0 values; no tail:
- *            the defaults)
+ *   STORE    projects (every 1.0 value of both sounds, the delay's MODE; with track 3's steps there: kept beside the
+ *            project, the steps' nudges kept; saved so by 1.0 .. 1.2: their defaults; a 0.9 project: the defaults);
+ *            user presets (every value back, the sources 16..19 of slots 1..6 by their fifth bit; the record SLOOP
+ *            reads the same with or without the 1.0 values; no tail: the defaults)
  *   PAGES    VOICE 3, LFO 3, ENV 2 LOOP, MACROS, DLY 2, the matrix's slots 7..12
  *   FIX      the JUNO chorus on a loud chord (8 voices at 127): no crack */
 #define main hostsim_main
@@ -578,14 +578,33 @@ static void t_store(void)
        "project: every 1.0 value of both sounds and the delay's MODE kept (track 3's nudges: none), the size unchanged");
     trk[2].step[5].n = 1, trk[2].step[5].note[0] = 60, trk[2].micro[5] = -7;
     proj_capture(&pj);
-    proj_apply(&pj, 1);
-    for (i = P_SPREAD; i < P_E0; i++)
-        dflt &= a->p[i] == TP[i].def && b->p[i] == TP[i].def;
-    ok(dflt && trk[2].micro[5] == -7 && trk[2].step[5].n == 1 && song.g[G_DMODE] == DM_MONO,
-       "project: track 3 with steps: its nudges kept, the 1.0 values at their defaults");
+    {   /* (after 1.2) track 3 with steps (a SLOOP project's): its nudges stay its own in the project, the 1.0 values
+         * beside it (project.c proj_x10_t: the side record in flash, object 14 in a backup) */
+        uint32_t own = pj.t[2].micro[5] == -7;
+        for (i = 0; i < NSTEP; i++)
+            own &= i == 5u || pj.t[2].micro[i] == 0;
+        for (i = P_SPREAD; i < P_E0; i++)
+            a->p[i] = b->p[i] = TP[i].def;
+        song.g[G_DMODE] = DM_MONO;
+        proj_apply(&pj, 1);
+        same = own;
+        for (i = P_SPREAD; i < P_E0; i++)
+            same &= a->p[i] == va[i] && b->p[i] == vb[i];
+        ok(same && trk[2].micro[5] == -7 && trk[2].step[5].n == 1 && song.g[G_DMODE] == DM_TAPE,
+           "project: track 3 with steps: its nudges kept as they are, every 1.0 value and the MODE kept (beside the project)");
+        memset(&proj_x10s[proj_x10_at(&pj)], 0, sizeof proj_x10s[0]);   /* (a project of 1.0 .. 1.2: nothing beside it) */
+        for (i = P_SPREAD; i < P_E0; i++)
+            a->p[i] = va[i];
+        proj_apply(&pj, 1);
+        for (i = P_SPREAD; i < P_E0; i++)
+            dflt &= a->p[i] == TP[i].def && b->p[i] == TP[i].def;
+        ok(dflt && trk[2].micro[5] == -7 && song.g[G_DMODE] == DM_MONO,
+           "project: track 3 with steps, saved by 1.0 .. 1.2 (nothing beside it): its nudges kept, the 1.0 values at their defaults");
+    }
     trk[2].step[5].n = 0, trk[2].micro[5] = 0;
     proj_capture(&pj);
     memset(pj.t[2].micro, 0, sizeof pj.t[2].micro);    /* (as 0.9 wrote it) */
+    memset(&proj_x10s[proj_x10_at(&pj)], 0, sizeof proj_x10s[0]);
     for (i = P_SPREAD; i < P_E0; i++)
         a->p[i] = va[i];
     proj_apply(&pj, 1);

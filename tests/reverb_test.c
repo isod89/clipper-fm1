@@ -188,7 +188,7 @@ int main(int argc, char **argv)
     }
     {   /* 7. the delay line at half rate (Clipper): the echo at the delay time, the repeats decaying */
         static int32_t zero[CTL], din[CTL], wl[CTL], wr[CTL];
-        static int32_t y[FS * 3];
+        static int32_t y[FS * 3 + CTL];                  /* (+ CTL: the last block) */
         uint32_t i, k, dl, first = 0, second = 0;
         int32_t p1 = 0, p2 = 0;
         setup(RT_ROOM, 90, 60, 0);

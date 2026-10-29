@@ -871,6 +871,25 @@ static void hybrid_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 }
 
 /* EDIT */
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the oscillators set to phase 0 at each note (RESET) moved
+ * by r (Q32) of a turn of the note, each by its share (its interval; FIXED: C4's): the others' phases are random
+ * each note already */
+static void hybrid_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    const hy_patch_t *P = &hy_cur[(uint32_t)(t - trk) % NPART];
+    hy_voice_t *hv = hy_voice(t, v);
+    uint32_t k, b;
+    if (!hv)
+        return;
+    b = hy_inc(v->pitch16, 0, 0);
+    for (k = 0; k < HY_NOSC; k++)
+        if ((P->osc[k].flags & HOF_RESET) && b) {
+            const hy_osc_t *o = &P->osc[k];
+            uint32_t ik = hy_inc((o->flags & HOF_FIXED) ? 60 * 16 : v->pitch16, 0, o->coarse * 4096 + o->fine * 41);
+            hv->ph[k] += (uint32_t)(((uint64_t)r * ik) / b);
+        }
+}
+
 static const engine_t ENG_HYBRID = {
     "HYBRID", {"FILT", "MACRO"},
     {

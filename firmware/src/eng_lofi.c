@@ -223,6 +223,17 @@ static const preset_t LOFI_PRESETS[] = {
 #endif
 };
 
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the oscillator moved by r (Q32) of a turn of the note and
+ * the noise register from its own place (every note's from 0x7FFF: every voice the same noise) */
+static void lofi_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    (void)t;
+    v->ph[0] += r;
+    v->s[2] = (int32_t)(((uint32_t)v->s[2] ^ (r >> 17)) & 0x7FFFu);
+    if (!v->s[2])
+        v->s[2] = 1;
+}
+
 static const engine_t ENG_LOFI = {
     "LOFI", {"CHIP", "MOTN"},
     {

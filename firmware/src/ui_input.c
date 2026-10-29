@@ -1092,9 +1092,13 @@ UI_SMALL static void ui_input(void)
     }
     if (rec_wait && !ft_on && !ci_on) {                 /* the REC screen, armed: how it records */
         rec_knobs();                                    /* (tempo and sound still work; the track too: */
+        enc_hold |= 15u << EN_K1;                       /* (after Clipper 1.2, sloop-pro #6) KNOB 1..4 are the REC screen's this
+                                                         * pass: a detent counted after rec_knobs read it never reaches
+                                                         * the page under it too (K3 START also moved TRACKS' LEN) */
     } else if (rec_wait || ft_on) {                     /* the arm follows) */
         for (k = 0; k < 4u; k++)                        /* a take / the count-in: KNOB 1..4 edit nothing */
             panel_enc(EN_K1 + k);
+        enc_hold |= 15u << EN_K1;
     }
 #if FELUCCA_ARRANGER
     if (on_song_page()) {

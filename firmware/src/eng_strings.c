@@ -99,6 +99,16 @@ static const preset_t STRINGS_PRESETS[] = {
     {"TAPE STR", {60, 127, 50, 127, 80, 20, 0, 10}, {60, 100, 120, 80}, 0, 0, FX(0, 0, 10, 55), XP(P_LRATE + 1, 30, P_LD_PIT + 1, 2)},
 };
 
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the three taps (at the 16' pitch, an octave down) moved by
+ * r (Q32) of a turn of the note (they start together at each note: every voice in phase) */
+static void strings_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    (void)t;
+    v->ph[0] += r >> 1;
+    v->ph[1] += r >> 1;
+    v->ph[2] += r >> 1;
+}
+
 static const engine_t ENG_STRINGS = {
     "STRINGS", {"REG", "TONE"},
     {

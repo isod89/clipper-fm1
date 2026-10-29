@@ -356,6 +356,15 @@ static const preset_t WAVE_PRESETS[] = {
     {"HARM PAD", {2, 40, 8, 30, 110, 0, 0, 40}, {70, 100, 120, 95}, 0, 0, FX(0, 40, 20, 60), XP(P_LRATE + 1, 20, P_LD_SHP + 1, 30)},
 };
 
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): oscillators 1, 2 (DTN cents up) and the sub moved by r
+ * (Q32) of a turn of the note, each by its share (fixed phases at each note: every voice in phase) */
+static void wave_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    v->ph[0] += r;
+    v->ph[1] += r + (uint32_t)(((uint64_t)r * (uint32_t)(t->p[P_E2] * 38)) >> 16);
+    v->ph[2] += r >> 1;
+}
+
 static const engine_t ENG_WAVE = {
     "WAVE", {"WAVE", "FLT"},
     {

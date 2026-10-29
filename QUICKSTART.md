@@ -1,10 +1,10 @@
-# Clipper — quick start (1.2)
+# Clipper — quick start (1.3)
 
 **Clipper** is a **synthesizer** firmware for the M-VAVE FM-1: one instrument, like the original firmware, Felucca or Baudgirl's FM-1+VA. It is not a groovebox: no tracks, no drum machine, no song mode, no built-in samples. It keeps SLOOP's engines, effects, arpeggiator, step sequencer, USB audio and MIDI, and adds **HYBRID** (three oscillators, two filters, a 16-slot matrix) and many more engines. Pitch bend, mod wheel, aftertouch and the sustain pedal work on every engine. *(En français : [DEMARRAGE-RAPIDE-FR.md](DEMARRAGE-RAPIDE-FR.md).)*
 
 > **Version 1.2.** Clipper runs on the FM-1; 1.2 brings SLOOP 2.8.3's fixes (see [New in 1.2](README.md#new-in-12-sloop-283s-fixes-a-steadier-second-core-the-ewi-as-one-voice)), and there is still a lot to do (see [What is left to do](README.md#what-is-left-to-do)). **Before installing, make a backup** with the editor (Clipper's or SLOOP's, whichever is installed): the Backup tab (Projects → Backup in SLOOP or an older version) → *Save a backup*.
 
-On the FM-1, Clipper shows its boot screen (**1.2** under the logo), and HOME (held) → SYS → ABOUT reads **CLIPPER 1.2**.
+On the FM-1, Clipper shows its boot screen (**1.3** under the logo), and HOME (held) → SYS → ABOUT reads **CLIPPER 1.3**.
 
 ## 1. Install
 
@@ -78,4 +78,4 @@ Some players hear a crackle or a noise on the left channel, with the reverb on a
 ## Going back
 
 - **To SLOOP**: run `INSTALL-SLOOP.bat` from SLOOP's folder. A sound set to HYBRID plays another engine there.
-- **To the official firmware**: use the installer page ("Return to the official firmware (V15)"), after making a backup.
+- **To the official firmware**: use the installer page ("Return to the official firmware", with M-VAVE's official FM-1.fwsc: V16, or V15), after making a backup.

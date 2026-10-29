@@ -381,7 +381,8 @@ static void fmx_note_on(track_t *t, voice_t *v)
         return;
     if (tr < NPART)
         fmx_block(t);                                /* (the patch of its sound: a note can come before a block) */
-    if (!x->live) {                                  /* a fresh voice: from rest; a retrigger keeps its phases */
+    if (!x->live || (!v->env && !v->env_out)) {      /* a fresh voice: from rest; a retrigger keeps its phases (a voice
+                                                      * given up, voice.c voice_kill, ended without fmx_done: as FM6) */
         memset(x, 0, sizeof *x);
         x->rnd = 0x9E3779B9u * ((uint32_t)v->note + 1u);
     }
@@ -389,6 +390,20 @@ static void fmx_note_on(track_t *t, voice_t *v)
     for (k = 0; k < FMX_NOP; k++)
         x->st[k] = 1;                                /* (attack: from where the envelope is) */
     x->peg = tr < NPART ? ((int32_t)fmx_cur[tr].peg - 64) * 3 * 4096 / 8 : 0;   /* +-24 semitones at 0 / 127 */
+}
+
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the voice's operators moved together by r (Q32) of a turn of its
+ * note, each by its own increment's share: the relative phases, the timbre, kept */
+static void fmx_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    fmx_voice_t *x = fmx_voice(t, v);
+    uint32_t tr = (uint32_t)(t - trk), k, base;
+    if (!x || tr >= NPART)
+        return;
+    base = pitch_inc((uint32_t)clamp(v->pitch16, 0, 2047));
+    for (k = 0; k < FMX_NOP; k++)                    /* (FIX: r / base samples of its own increment; per note) */
+        x->ph[k] += fmx_eff[tr].mode[k] & FXM_FIX ? (uint32_t)(((uint64_t)r * fmx_eff[tr].ratio[k]) / (base ? base : 1u))
+                                                  : (uint32_t)(((uint64_t)r * fmx_eff[tr].ratio[k]) >> 16);
 }
 
 static int fmx_done(track_t *t, voice_t *v)

@@ -61,6 +61,8 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/song_audio_test" tests/song_audio
 run "song: four simultaneous tracks, scene transition and stop" "$OUT/song_audio_test" "$OUT/song-demo.wav"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/song_ui_test" tests/song_ui_test.c -lm
 run "song screen: commands, load (OCT+ twice), display bounds" "$OUT/song_ui_test" "$OUT/song-screen.ppm"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/song_arm_test" tests/song_arm_test.c -lm
+run "song screen: a confirmation left unconfirmed asks again weeks later (no load / replace on one press)" "$OUT/song_arm_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/studio_drums_test" tests/studio_drums_test.c -lm
 run "drum lanes, kit audio, metronome, record arm, free take" "$OUT/studio_drums_test" "$OUT/drum-styles.wav"
@@ -74,6 +76,8 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drum_steal_test" tests/drum_steal
 run "SLOOP 2.8.3: drum voices on a busy beat, every kit: no kick cut by another sound" "$OUT/drum_steal_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/chop_attack_test" tests/chop_attack_test.c -lm
 run "SLOOP 2.8.3: a sample played again starts from silence with its ATK (POLY same note, MONO, LEGATO, UNISON), no click" "$OUT/chop_attack_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fade_noise_test" tests/fade_noise_test.c -lm
+run "SLOOP Pro #4: a note fading out keeps 16-bit resolution (DAC, MASTER 2048, USB FULL, 808 SLIDE): no 16 LSB floor" "$OUT/fade_noise_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.c -lm
 run "synthesised drum kits: every kit x sound bounded, audible, finite, levels, cost" "$OUT/drumkit_test" "$OUT/drum-kits.wav" "$OUT/drum-kits.txt"
@@ -117,8 +121,12 @@ $SYN -o "$OUT/clipper_ui_test" tests/clipper_ui_test.c -lm
 run "Clipper synth: HOME, presets, keys, pages, one track, MIDI omni, no drums / song" "$OUT/clipper_ui_test" "$OUT/clipper"
 $SYN -o "$OUT/clipper_hold_test" tests/hold_rec_test.c -lm
 run "Clipper synth (SLOOP 2.8.3): a note held under others, POLY and UNI2, live / recorded / overdub / free take, MIDI burst" "$OUT/clipper_hold_test"
+$SYN -o "$OUT/knob_walk_test" tests/knob_walk_test.c -lm
+run "Clipper synth (sloop-pro #6): every page, HOME, REC READY: a knob turned alone changes one value" "$OUT/knob_walk_test" "$OUT"
 $SYN -o "$OUT/clipper_chop_test" tests/chop_attack_test.c -lm
 run "Clipper synth (SLOOP 2.8.3): a sample played again starts from silence with its ATK, no click" "$OUT/clipper_chop_test"
+$SYN -o "$OUT/clipper_fade_test" tests/fade_noise_test.c -lm
+run "Clipper synth (SLOOP Pro #4): a note fading out keeps 16-bit resolution: the mix and MASTER rounded, no 16 LSB floor" "$OUT/clipper_fade_test"
 $SYN -o "$OUT/clipper_stress" tests/stress_test.c -lm
 run "Clipper synth: stress (hard random use, clean stop)" "$OUT/clipper_stress" "${STRESS_FRAMES:-40000}"
 $SYN -o "$OUT/clipper_soak" tests/soak_test.c -lm
@@ -157,6 +165,21 @@ fi
 $SYN -o "$OUT/fmx_test" tests/fmx_test.c -lm
 mkdir -p build/fmx_demo
 run "Clipper 0.6 FMX: presets in tune, waves, PM / FM / RING, routing, 40 templates, PEG, bank (FMX and DX7 slots), DX7 converted" "$OUT/fmx_test" build/fmx_demo
+$SYN -o "$OUT/noise_clock_test" tests/noise_clock_test.c -lm
+run "NOISE LFSR: the clock follows the keys past the sample rate (NZ ARCADE, clipper-fm1 #10)" "$OUT/noise_clock_test"
+$SYN -o "$OUT/sample_pitch_test" tests/sample_pitch_test.c -lm
+run "SAMPLE, GRAIN: the pitch follows the keys to the top of the keyboard (up to the decode bound)" "$OUT/sample_pitch_test"
+$SYN -o "$OUT/grain_release_test" tests/grain_release_test.c -lm
+run "GRAIN: a note played in the release of the one before is not starved of grains" "$OUT/grain_release_test"
+$SYN -o "$OUT/phys_tune_test" tests/phys_tune_test.c -lm
+run "PHYS: every pitched preset in tune (+-5 cents; a curved bridge +-20), notes 28..100" "$OUT/phys_tune_test"
+$SYN -o "$OUT/unison_level_test" tests/unison_level_test.c -lm
+run "UNISON, UNI4: every engine spreads its voices' phases (no stack of voices in phase over POLY)" "$OUT/unison_level_test"
+$SYN -o "$OUT/fmx_kill_test" tests/fmx_kill_test.c -lm
+run "FMX: a voice given up (voice budget, overload) and played again starts from rest" "$OUT/fmx_kill_test"
+$SYN -o "$OUT/model_switch_test" tests/model_switch_test.c -lm
+run "filter MODEL changed under a held chord (ANALOG, WAVE, VECTOR): no click" "$OUT/model_switch_test"
+run "the editor protocol and the other inputs (USB / TRS MIDI, damaged flash) fuzzed under ASan + UBSan, and its reproducers" sh tests/editor_fuzz.sh "${EDFZ_N:-2000}" 1
 if $SYN_UB -o "$OUT/fmx_ub" tests/fmx_test.c -lm 2>/dev/null; then
     run "Clipper 0.6 FMX under ASan + UBSan" sh -c "'$OUT/fmx_ub' >/dev/null && echo clean"
 fi

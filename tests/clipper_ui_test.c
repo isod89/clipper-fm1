@@ -512,6 +512,25 @@ int main(int argc, char **argv)
         check(t->p[P_SLEN] == 16 && t->step[0].note[0] == 60u && ui.home, "EDIT + OCT-: the whole hold's turns undone at once");
         tap(B_EDIT); frames(2);
         check(!ui.home && cur_page()->fam == FAM_EDIT, "EDIT tapped: its pages");
+        {   /* (after 1.2, clipper-fm1 #24) a firm press, let go untouched within a second, opens the pages too: GLO
+             * pressed for 0.6 s from HOME or from the NOTES page used to open nothing (TAP 0.45 s) */
+            static const uint32_t LB[5] = {B_GLO, B_EDIT, B_ARP, B_SEQ, B_SCL};
+            static const uint8_t LF[5] = {FAM_GLO, FAM_EDIT, FAM_ARP, FAM_SEQ, FAM_SCL};
+            uint32_t q;
+            ok = 1;
+            for (q = 0; q < 5u; q++) {
+                go_home(); frames(2);
+                press(LB[q]); frames(37); release(LB[q]); frames(3);   /* (0.6 s) */
+                ok &= !ui.home && cur_page()->fam == LF[q];
+            }
+            go_home(); frames(2); tap(B_SEQ); frames(2);
+            press(B_GLO); frames(37); release(B_GLO); frames(3);
+            ok &= !ui.home && cur_page()->fam == FAM_GLO;
+            go_home(); frames(2);
+            press(B_GLO); frames(80); release(B_GLO); frames(3);  /* (1.3 s: a look at the layer, no page) */
+            ok &= ui.home;
+            check(ok, "GLO, EDIT, ARP, SEQ, SEL pressed 0.6 s untouched (HOME, NOTES): their pages; held 1.3 s: none");
+        }
         go_home(); frames(2);
         press(B_GLO); frames(24);                    /* (SLOOP 2.8.3: the layer after 0.35 s) */
         ok = ui.layer == LY_MIX;

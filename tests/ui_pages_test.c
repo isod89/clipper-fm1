@@ -33,7 +33,10 @@ static void lcd_fill(uint32_t x,uint32_t y,uint32_t w,uint32_t h,uint16_t c)
 static int32_t encs[7];
 static uint32_t fm1_ticks(void) { return fm1_ms * 1000u * 24u; }
 #define FM1_TICKS_PER_US 24u
-static int32_t fm1_enc_take(uint32_t e) { int32_t s = encs[e]; encs[e] = 0; return s; }
+static int32_t enc_late[7];                         /* a detent the timer ISR counts just after a read (as on the FM-1, where the
+                                                     * scan runs while a UI pass does): it lands in the same pass
+                                                     * (tests/knob_walk_test.c) */
+static int32_t fm1_enc_take(uint32_t e) { int32_t s = encs[e]; encs[e] = enc_late[e]; enc_late[e] = 0; return s; }
 static uint8_t fm1_led[16], fm1_led_dim[16], fm1_led_bg[16];
 static volatile uint16_t fm1_led_bg_ns;
 #define FM1_NCOL 16u
@@ -934,7 +937,7 @@ int main(int argc, char **argv)
         { int16_t bpm = song.g[G_BPM], lv = trk[0].p[P_LEVEL];
           encs[panel.enc[EN_K2]] = 5; frame();
           check(trk[0].p[P_LEVEL] == lv && song.g[G_BPM] == bpm, "visualiser: KNOB 2 (the hidden TRACKS screen) edits nothing, SELECT is not the tempo"); }
-        press(B_GLO); frames(40);                  /* (held past a tap) */
+        press(B_GLO); frames(70);                  /* (held past a tap: 1 s, clipper-fm1 #24) */
         check(ui.layer == LY_MIX, "visualiser: a layer held shows its screen");
         release(B_GLO); frames(4);
         check(vis_shown(), "visualiser: ... and it comes back");

@@ -1,4 +1,4 @@
-# Clipper 1.2: build the firmware, then open the browser installer.
+# Clipper 1.3: build the firmware, then open the browser installer.
 # Uses the same tools as SLOOP (WSL MinUI-Build, the JieLi toolchain) and the three AC79 SDK files in
 # build\deps\ac79 (copied from the SLOOP folder the first time if they are not here yet).
 # Port 8767 (SLOOP uses 8766): a SLOOP window left open does not get mixed up with this one.
@@ -6,7 +6,7 @@ param([string]$Voices = "8")
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 Write-Host ""
-Write-Host "  C L I P P E R   1.2   ($Voices voices)" -ForegroundColor White
+Write-Host "  C L I P P E R   1.3   ($Voices voices)" -ForegroundColor White
 Write-Host "  ---- ---- ---- ----" -ForegroundColor DarkGray
 if ($Voices -notin @("8", "12", "16")) { throw "Voices: 8, 12 or 16" }
 $sdk = "build\deps\ac79"
@@ -29,7 +29,7 @@ Remove-Item Env:FELUCCA_SLICE -ErrorAction SilentlyContinue
 python tools/build_windows.py --distro MinUI-Build --toolchain /root/fm1-codex-deps/jieli/toolchain --sdk $sdk --slice 0 --nvoice $Voices
 if ($LASTEXITCODE -ne 0) { throw "The build failed" }
 Write-Host "== Making the installer site" -ForegroundColor Cyan
-python web/make_site.py build/felucca.fwsc 1.2 build/clipper-site
+python web/make_site.py build/felucca.fwsc 1.3 build/clipper-site
 if ($LASTEXITCODE -ne 0) { throw "make_site failed" }
 Write-Host ""
 Write-Host "Installer: http://localhost:8767/webapp/installer/  (Chrome or Edge, FM-1 on USB)" -ForegroundColor Green

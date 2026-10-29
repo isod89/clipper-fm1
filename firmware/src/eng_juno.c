@@ -114,6 +114,16 @@ static const preset_t JUNO_PRESETS[] = {
      XP(P_SPICE + 1, 16, P_SLOOP + 1, 8, P_VINT + 1, 30)},
 };
 
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the DCO and the sub (an octave down) moved by r (Q32) of a
+ * turn of the note, the noise from its own place (the note's seed: every voice the same) */
+static void juno_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    (void)t;
+    v->ph[0] += r;
+    v->ph[1] += r >> 1;
+    v->ph[2] ^= r;
+}
+
 static const engine_t ENG_JUNO = {
     "JUNO", {"DCO", "VCF"},
     {

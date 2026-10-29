@@ -305,7 +305,8 @@ static void drum_on(uint32_t note, uint32_t vel)
     {
         const smp_zone_t *z = drum_zone_of(v);
         v->s[3] = sample_next(z, v, 0);
-        v->s[5] = (int32_t)((pow2_q16((int32_t)note * 16 - z->root16) >> 8) * (z->rate >> 8));
+        /* (after Clipper 1.2) clamped: a user kit zone's root is not checked (a typed root of 300 shifted by 2^20) */
+        v->s[5] = (int32_t)((pow2_q16(clamp((int32_t)note * 16 - z->root16, -1536, 2047)) >> 8) * (z->rate >> 8));
     }
     {
         uint32_t vi = (uint32_t)(v - drums.v);

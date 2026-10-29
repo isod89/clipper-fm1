@@ -121,6 +121,15 @@ static const preset_t VPS_PRESETS[] = {
     {"VPS CHOIR", {64, 80, 10, 100, 96, 10, 40, 0}, {80, 100, 120, 100}, 0, 0, FX(0, 30, 10, 70), XP(P_LRATE + 1, 25, P_LD_SHP + 1, 8)},
 };
 
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): oscillators 1, 2 (DTN up) and the sub moved by r (Q32)
+ * of a turn of the note, each by its share (fixed phases at each note: every voice in phase) */
+static void vps_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    v->ph[0] += r;
+    v->ph[1] += r + (uint32_t)(((uint64_t)r * (uint32_t)(t->p[P_E6] * 30)) >> 16);
+    v->ph[2] += r >> 1;
+}
+
 static const engine_t ENG_VPS = {
     "VPS", {"VECTOR", "TONE"},
     {

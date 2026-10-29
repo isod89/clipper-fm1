@@ -59,6 +59,30 @@ static void macro_note_on(track_t *t, voice_t *v)
 static inline uint32_t *mac_ph(voice_t *v, uint32_t k) { return k < 3u ? &v->ph[k] : (uint32_t *)&v->s[k - 1u]; }
 static inline uint32_t mac_inc(uint32_t inc, int32_t semi) { return (uint32_t)(((uint64_t)inc * MAC_SEMI[clamp(semi, -12, 36) + 12]) >> 16); }
 
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the voice's oscillators moved by r (Q32) of a turn of its note,
+ * each by its own pitch's share (CHORD: its interval; SWARM: the note's), as if started that much sooner */
+static void macro_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    const int16_t *p = t->p;
+    uint32_t j;
+    switch ((uint32_t)p[P_E0] % 4u) {
+    case 0: {
+        const int8_t *c = MAC_CHORD[p[P_E1] * 11 / 128];
+        int32_t inv = p[P_E2] * 5 / 128;
+        for (j = 0; j < 4u; j++)
+            *mac_ph(v, j) += (uint32_t)(((uint64_t)r * MAC_SEMI[clamp(c[j] + ((int32_t)j < inv ? 12 : 0), -12, 36) + 12]) >> 16);
+        break;
+    }
+    case 1:
+        for (j = 0; j < 8u; j++)
+            *mac_ph(v, j) += r;
+        break;
+    default:                                         /* ADDTV, SPEECH: ph[0] */
+        v->ph[0] += r;
+        break;
+    }
+}
+
 static void mac_chord(voice_t *v, int32_t *acc, uint32_t n, uint32_t inc, int32_t harm, int32_t timb, int32_t morph)
 {
     const int8_t *c = MAC_CHORD[harm * 11 / 128];

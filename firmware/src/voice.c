@@ -314,6 +314,7 @@ static void glide_set(track_t *t, voice_t *v, int glide)
 #define VP_ON 1u
 #define VP_OFF 2u
 #define VP_GLIDE 4u
+#define VP_UNI 8u   /* (after Clipper 1.2) an extra UNISON voice: its start spread (unison_spread) */
 static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int glide)
 {
     const engine_t *e = ENGINES[t->engine];
@@ -399,6 +400,57 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     }
 }
 
+/* a UNISON voice's start phases moved by r (Q32: a turn of its note), as if it had started that much of a period
+ * sooner: in phase the voices stack, spread they sum as noise. Each engine moves its own oscillators (after Clipper
+ * 1.2: FMX and MACRO took nothing here, every voice in phase: FMX +12 dB over POLY, peaks of 4 full scales; MACRO's
+ * chords +7 dB peaks) */
+static void unison_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    const engine_t *e = ENGINES[t->engine];
+    /* (after Clipper 1.2) each engine moves all its oscillators (and reseeds its noise): ph[0] alone left the others in
+     * phase (ANALOG's osc 2, TRIO's 2 and 3, DIGITAL's and FM6's operators, the subs, SAMPLE's start...) */
+    if (e == &ENG_ANALOG)
+        analog_spread(t, v, r);
+    else if (e == &ENG_DIGITAL)
+        digital_spread(t, v, r);
+    else if (e == &ENG_PHASE)
+        phase_spread(t, v, r);
+    else if (e == &ENG_LOFI)
+        lofi_spread(t, v, r);
+    else if (e == &ENG_TRIO)
+        trio_spread(t, v, r);
+    else if (e == &ENG_NOISE)
+        noise_spread(t, v, r);
+    else if (e == &ENG_FM6)
+        fm6_spread(t, v, r);
+    else if (e == &ENG_SAMPLE)
+        sample_spread(t, v, r);
+    else if (e == &ENG_HYBRID)
+        hybrid_spread(t, v, r);
+#if CLIPPER_SYNTH
+    else if (e == &ENG_FMX)
+        fmx_spread(t, v, r);
+    else if (e == &ENG_MACRO)
+        macro_spread(t, v, r);
+    else if (e == &ENG_STRINGS)
+        strings_spread(t, v, r);
+    else if (e == &ENG_WAVE)
+        wave_spread(t, v, r);
+    else if (e == &ENG_VPS)
+        vps_spread(t, v, r);
+    else if (e == &ENG_JUNO)
+        juno_spread(t, v, r);
+    else if (e == &ENG_WSEQ)
+        wseq_spread(t, v, r);
+#endif
+#if FELUCCA_SLICE
+    else if (e == &ENG_SLICE)
+        ;                                            /* (slices: as played) */
+#endif
+    else
+        v->ph[0] += r;
+}
+
 /* MONO / LEGATO / UNISON: one note on one voice (eight for UNISON, or the
  * engine's voice cap, spread by DETUNE over the same width) */
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
@@ -416,11 +468,12 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
                 continue;                                   /* no room for this extra UNISON voice */
             /* level: about the same sum for 8 or 4 voices at random phases */
             voice_start(t, v, note, nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
-            if (nv > 1u && i && !eng_sampled(ENGINES[t->engine]) && !was_sounding) {   /* random start phases: */
+            if (nv > 1u && i && !was_sounding) {   /* random start phases (SAMPLE: its start; not SLICE): */
                 static uint32_t seed = 0x1234567u;          /* in phase they stack, evenly spread they cancel */
                 seed = seed * 1664525u + 1013904223u;
-                v->ph[0] += seed;
-            }
+                unison_spread(t, v, seed);
+            } else if (nv > 1u && i && (v->pend & VP_ON))
+                v->pend |= VP_UNI;                          /* (a sample's, after its fade: spread as it starts) */
         } else {                                            /* legato: new pitch, same envelope */
             v->note = (uint8_t)note;
 #if CLIPPER_SYNTH
@@ -517,10 +570,11 @@ static void puni_on(track_t *t, uint32_t note, uint32_t vel)
         int32_t s = n > 1u ? (2 * (int32_t)j - (int32_t)(n - 1u)) * 7 : 0;   /* -7 .. 7 (x (n - 1)) */
         v->fine = n > 1u ? s * t->p[P_DETUNE] * 56 / (889 * (int32_t)(n - 1u)) : 0;
         voice_start(t, v, note, n >= 4u ? vel / 2u : n > 1u ? vel * 70u / 100u : vel, t->p[P_GLIDE] != 0);
-        if (j && !was && !eng_sampled(ENGINES[t->engine])) {   /* random start phases (in phase they stack) */
+        if (j && !was) {                                /* random start phases (in phase they stack) */
             seed = seed * 1664525u + 1013904223u;
-            v->ph[0] += seed;
-        }
+            unison_spread(t, v, seed);
+        } else if (j && (v->pend & VP_ON))
+            v->pend |= VP_UNI;                          /* (a sample's, after its fade: spread as it starts) */
     }
 }
 #endif
@@ -1215,6 +1269,16 @@ static void vs_finish(track_t *t, const engine_t *e, int32_t *out, uint32_t n)
 }
 #endif
 
+#if CLIPPER_SYNTH
+/* (after Clipper 1.2) the level of a voice of UNISON (UNI2, UNI4) against POLY's, Q15, as mono_play and puni_on set it
+ * through the velocity (about the same sum at random phases): for FMX, whose envelopes are the voice's level (no
+ * velocity there: its unison came out +6 dB over POLY with the phases spread, +12 before) */
+static int32_t uni_level(const track_t *t)
+{
+    uint32_t vm = voice_mode(t);
+    return vm == V_UNISON ? (trk_nvoice(t) >= NVOICE ? 11796 : 16384) : vm == V_PUNI4 ? 16384 : vm == V_PUNI2 ? 22938 : 32767;
+}
+#endif
 static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
 {
     const engine_t *e = ENGINES[t->engine];
@@ -1312,6 +1376,11 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             v->pend = 0;
             if (voice_room(t, 0)) {                     /* (it was not counted while fading: within the budget) */
                 voice_start(t, v, v->pend_note, v->pend_vel, (pf & VP_GLIDE) != 0);
+                if (pf & VP_UNI) {                      /* (after Clipper 1.2) UNISON: not in phase with the others */
+                    static uint32_t seed = 0x13579BDu;
+                    seed = seed * 1664525u + 1013904223u;
+                    unison_spread(t, v, seed);
+                }
                 if (pf & VP_OFF) {                      /* let go within the fade (~1.5 ms): released as it starts, */
                     if (voice_poly((int)voice_mode(t)) &&     /* or held by the sustain pedal */
                         part_ctl[CLIPPER_SYNTH ? ctl_part(t) : (uint32_t)(t - trk) % NPART].sus)
@@ -1408,6 +1477,10 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
             m.amp1 = e->ownenv ? env : mulq15(env, v->vel * 258);
+#if CLIPPER_SYNTH
+            if (e == &ENG_FMX && t->p[P_VOICE] >= V_UNISON)   /* (after Clipper 1.2) FMX: UNISON's level per voice */
+                m.amp1 = mulq15(m.amp1, uni_level(t));
+#endif
             if (p[P_LD_AMP])
                 m.amp1 = mulq15(m.amp1, 32767 - mulq15((lfo + 32768) >> 1, p[P_LD_AMP] * 258));
 #if CLIPPER_SYNTH

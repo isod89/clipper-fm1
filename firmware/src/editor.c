@@ -463,16 +463,38 @@ UI_SMALL static const uint8_t *ed_bk_obj(uint32_t id, uint32_t *len)   /* 0 = no
         *len = sizeof dsu;
         return (const uint8_t *)&dsu;
     }
+#if CLIPPER_SYNTH
+    if (id == 12u || id == 13u) {                         /* each user preset's Clipper values the records have no room for:
+                                                         * 12 the banks' side records (MOD SEQ, SPICE, VINTAGE...), 13 their
+                                                         * tails (SPREAD .. matrix slot 12, the macros); restored after 6, 7 */
+        *len = id == 12u ? sizeof up_side : sizeof up_tail;
+        return id == 12u ? (const uint8_t *)up_side : (const uint8_t *)up_tail;
+    }
+    if (id == 14u) {                                      /* (after Clipper 1.2) the projects' 1.0 blocks (project.c
+                                                         * proj_x10_t): the slots A..D and LIST's snapshot of the working
+                                                         * project (proj_x10s 0..4), each bound to its project by its sum */
+        *len = 5u * sizeof proj_x10s[0];
+        return (const uint8_t *)proj_x10s;
+    }
+#endif
     if (id >= 32u && id < 32u + SMP_USER_SLOTS) {
         const smp_user_hdr_t *h = (const smp_user_hdr_t *)smp_user_xip(id - 32u);
         if (h->magic == SMP_USER_MAGIC && h->version == 1u && h->nz && h->nz <= 16u &&
             h->data_len <= SMP_USER_SIZE - SMP_USER_DATA)
             *len = SMP_USER_DATA + h->data_len;
+#if CLIPPER_SYNTH
+        else if (wt_user_hdr_ok((const wt_user_hdr_t *)h))   /* a wavetable for WAVE: backed up as a sample is */
+            *len = SMP_USER_DATA + WT_USER_LEN;
+#endif
         return smp_user_xip(id - 32u);
     }
     return 0;
 }
-static const uint8_t ED_BK_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34, 35};   /* 35: USR4 (2.4), 9: SYN kits (2.5) */
+static const uint8_t ED_BK_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+#if CLIPPER_SYNTH
+                                     12, 13, 14,
+#endif
+                                     32, 33, 34, 35};   /* 35: USR4 (2.4), 9: SYN kits (2.5) */
 
 /* a flash erase silences the audio for ~50 ms and stalls USB: only while stopped (as the panel) */
 UI_SMALL static uint32_t ed_flash_busy(void) { return song.playing || transport_req; }
@@ -495,14 +517,36 @@ UI_SMALL static uint32_t ed_bk_commit(void)
         if (n == 8u + UP_PER_BANK * UP_RSIZE_04 && b->magic == UP_BANK_MAGIC && b->rsize == UP_RSIZE_04 &&
             b->nslot == UP_PER_BANK) {                    /* a Clipper 0.4 backup's bank: made today's, then stored */
             up_bank_import(id - 6u, raw, (int)n);
+            memset(&up_side[id - 6u], 0, sizeof up_side[0]);   /* (after Clipper 1.2: another bank's) */
+            memset(&up_tail[id - 6u], 0, sizeof up_tail[0]);
             up_gen++;
             return !flash_ok || st_save(OBJ_UPRESET0 + id - 6u, &up_bank[id - 6u], sizeof up_bank[0]) ? 4u : 0u;
         }
 #endif
         if (n && (n != sizeof *b || b->magic != UP_BANK_MAGIC || b->rsize != sizeof(up_rec_t) || b->nslot != UP_PER_BANK))
             return 2;
+#if CLIPPER_SYNTH
+        {   /* (after Clipper 1.2) the bank's side record and tail: kept with the same bank (a backup from before objects
+             * 12, 13, restored over the presets it was made from), else cleared (another bank's: 12, 13 bring this one's) */
+            int same = n == sizeof up_bank[0] && !memcmp(&up_bank[id - 6u], raw, n), rc;
+            if (!same) {
+                memset(&up_side[id - 6u], 0, sizeof up_side[0]);
+                memset(&up_tail[id - 6u], 0, sizeof up_tail[0]);
+            }
+            st_side = up_side[id - 6u].magic ? &up_side[id - 6u] : 0;
+            st_side_len = sizeof(up_side_t);
+            st_tail = up_tail[id - 6u].magic ? &up_tail[id - 6u] : 0;
+            st_tail_len = sizeof(up_tail_t);
+            rc = !flash_ok || st_save(OBJ_UPRESET0 + id - 6u, raw, n);
+            st_side = 0;
+            st_tail = 0;
+            if (rc)
+                return 4;
+        }
+#else
         if (!flash_ok || st_save(OBJ_UPRESET0 + id - 6u, raw, n))
             return 4;
+#endif
         memset(&up_bank[id - 6u], 0, sizeof up_bank[0]);
         if (n)
             memcpy(&up_bank[id - 6u], raw, n);
@@ -510,6 +554,66 @@ UI_SMALL static uint32_t ed_bk_commit(void)
         up_gen++;
         return 0;
     }
+#if CLIPPER_SYNTH
+    if (id == 12u || id == 13u) {                         /* the user presets' side records / tails: each bank's whole or none */
+        uint32_t b, rc = 0;
+        if (ed_flash_busy())
+            return 3;
+        if (n != (id == 12u ? sizeof up_side : sizeof up_tail))
+            return 2;
+        for (b = 0; b < UP_SLOTS / UP_PER_BANK; b++) {
+            if (id == 12u) {
+                const up_side_t *x = (const up_side_t *)raw + b;
+                up_side[b] = *x;
+                if (x->magic != UP_SIDE_MAGIC || x->crc != st_crc32(x, sizeof *x - 4u))
+                    memset(&up_side[b], 0, sizeof up_side[b]);
+            } else {
+                const up_tail_t *x = (const up_tail_t *)raw + b;
+                up_tail[b] = *x;
+                if (x->magic != UP_TAIL_MAGIC || x->crc != st_crc32(x, sizeof *x - 4u))
+                    memset(&up_tail[b], 0, sizeof up_tail[b]);
+            }
+            if (up_bank[b].magic != UP_BANK_MAGIC)
+                continue;
+            st_side = up_side[b].magic ? &up_side[b] : 0;
+            st_side_len = sizeof(up_side_t);
+            st_tail = up_tail[b].magic ? &up_tail[b] : 0;
+            st_tail_len = sizeof(up_tail_t);
+            if (!flash_ok || st_save(OBJ_UPRESET0 + b, &up_bank[b], sizeof up_bank[b]))
+                rc = 4;                                   /* (the other bank is written still) */
+            st_side = 0;
+            st_tail = 0;
+        }
+        up_gen++;
+        return rc;
+    }
+#endif
+#if CLIPPER_SYNTH
+    if (id == 14u) {                                      /* (after Clipper 1.2) the projects' 1.0 blocks, after 0 and 2..5:
+                                                         * each to the project it belongs to (its sum), written with it */
+        uint32_t b, i, rc = 0;
+        if (ed_flash_busy())
+            return 3;
+        if (n != 5u * sizeof(proj_x10_t))
+            return 2;
+        for (b = 0; b < 5u; b++) {
+            proj_x10_t x;
+            memcpy(&x, raw + b * sizeof x, sizeof x);
+            if (!proj_x10_valid(&x))
+                continue;
+            for (i = 0; i < 4u; i++)
+                if (proj_ok(&proj_slot[i]) && proj_slot[i].sum == x.sum) {
+                    proj_x10s[i] = x;
+                    if (!flash_ok || proj_st_save(OBJ_PROJECT0 + i, &proj_slot[i]))
+                        rc = 4;
+                }
+            if (proj_restored_sum && x.sum == proj_restored_sum)
+                proj_x10_set(x.m);                         /* (the working project restored: its sounds' values) */
+        }
+        proj_restored_sum = 0;
+        return rc;
+    }
+#endif
     if (id == 8u) {                                       /* the FM6 patch bank (n 0: empty) */
         if (ed_flash_busy())
             return 3;
@@ -582,7 +686,7 @@ UI_SMALL static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 
         rc = 1;
         if (!flash_ok) {
             rc = 4;
-        } else if (op == 0u && na == 12u && (id <= 9u)) {  /* begin: id, length (5), CRC-32 (5) */
+        } else if (op == 0u && na == 12u && (id <= 9u || (CLIPPER_SYNTH && (id == 12u || id == 13u || id == 14u)))) {  /* begin: id, length (5), CRC-32 (5) */
             len = ed_bk_r32(a + 2);
             if (id >= 2u || len) {                        /* (the working project and the settings are never empty) */
                 if (len <= sizeof proj_tmp) {
@@ -979,7 +1083,7 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
         t = &trk[a[0]];
         lv = a[0] == TRK_DRUM ? &song.g[G_DRLVL] : &t->p[P_LEVEL];
         if (na >= 4u) {
-            *lv = (int16_t)clamp(ed_rv(a + 1), 0, 127);
+            *lv = (int16_t)clamp(ed_rv(a + 1), a[0] == TRK_DRUM ? GP[G_DRLVL].min : 0, a[0] == TRK_DRUM ? GP[G_DRLVL].max : 127);
             t->p[P_MUTE] = (int16_t)(a[3] ? 1 : 0);
             if (a[0] == TRK_DRUM)                          /* the editor's own change: no push */
                 ed_w.v[P_COUNT + G_DRLVL] = *lv;

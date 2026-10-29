@@ -524,7 +524,7 @@ async function editorBackup() {
   const info = E.parse[C.INFO](await rq(E.req.info()));
   ok(info.proto >= 6, "backup: INFO protocol v6 or later");
   const ec = readFileSync(join(HERE, "../firmware/src/editor.c"), "utf8");
-  ok(/ED_BK_IDS\[\] = \{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34, 35\}/.test(ec), "backup: the object ids == editor.c ED_BK_IDS (35: USR4, 9: SYN kits)");
+  ok(/ED_BK_IDS\[\] = \{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,\n#if CLIPPER_SYNTH\n\s*12, 13, 14,\n#endif\n\s*32, 33, 34, 35\}/.test(ec), "backup: the object ids == editor.c ED_BK_IDS (35: USR4, 9: SYN kits, 12 / 13: the user presets' side records / tails, 14: the projects' 1.0 blocks)");
   await rq(E.req.upStore(3, "BACKUP ME"));
   await rq(E.req.project(1, 2), { timeout: 4000, retries: 0 });
   const s = Int16Array.from({ length: 3000 }, (_, i) => Math.round(8000 * Math.sin(i / 7)));
@@ -1808,7 +1808,19 @@ async function updater() {
   const pk = await import(join(HERE, "fm1pkg.js"));
   const notStock = new Uint8Array(pk.STOCK_V15_SIZE);
   const e6 = await pk.validateStockPackage(notStock).then(() => null, (x) => x);
-  ok(e6 && /official FM-1 V15/.test(e6.message), "fm1pkg.js: only the exact official V15 is accepted (SHA-256)");
+  ok(e6 && /official FM-1 file/.test(e6.message), "fm1pkg.js: only the exact official V15 / V16 is accepted (SHA-256)");
+  /* (after 1.2, sloop-fm1 #8) V16, the file M-VAVE now offers, is accepted too: its size, digest and identity pinned;
+   * a file of its size with other bytes is not. FM1_V16=path/FM-1.fwsc (M-VAVE's V16, not shipped here) checks the
+   * real file */
+  ok(pk.STOCK_V16_SIZE === 718196 && pk.STOCK_V16_PRODUCT === "FM-1_016" && pk.STOCK_FM1.length === 2 &&
+     pk.STOCK_FM1.some((k) => k.product === "FM-1_015"), "fm1pkg.js: the official FM-1 V16 and V15 pinned");
+  const e7 = await pk.validateStockPackage(new Uint8Array(pk.STOCK_V16_SIZE)).then(() => null, (x) => x);
+  ok(e7 && /official FM-1 file/.test(e7.message), "fm1pkg.js: a file of V16's size, other bytes: refused");
+  if (process.env.FM1_V16) {
+    const v = await pk.validateStockPackage(new Uint8Array(readFileSync(process.env.FM1_V16)));
+    ok(v.product === "FM-1_016" && v.version === "V16" && v.image.length === pk.STOCK_V16_SIZE - 20,
+       "fm1pkg.js: M-VAVE's FM-1 V16 accepted (identity FM-1_016)");
+  }
 }
 
 await editorMock();

@@ -201,7 +201,8 @@ typedef struct {                               /* one track; the drum track igno
 #if CLIPPER_SYNTH
 /* 1.0: SPREAD .. the matrix's slot 12 of both (PROJ_X10 each, value - its minimum) and G_DMODE, in track 3's nudges
  * (micro: SLOOP plays them on track 3's steps; Clipper writes them only while track 3 has none, so they nudge nothing
- * there): byte 0 CLIPPER_PROJ_MARK_10, then track 1's, track 2's, G_DMODE, a check byte */
+ * there): byte 0 CLIPPER_PROJ_MARK_10, then track 1's, track 2's, G_DMODE, a check byte. After Clipper 1.2 the same
+ * block also goes beside every project (proj_x10_t below), so it is kept when track 3 has steps too */
 #define PROJ_X10 ((uint32_t)(P_E0 - P_SPREAD))
 #define PROJ_X10_DM (1u + 2u * PROJ_X10)
 #define PROJ_X10_CK (PROJ_X10_DM + 1u)
@@ -214,20 +215,24 @@ UI_SMALL static uint32_t proj_x10_ck(const int8_t *m)
         c = ((c << 1) | (c >> 7)) ^ (uint8_t)m[i];
     return c & 255u;
 }
-UI_SMALL static void proj_x10_put(proj_trk_t *d, const step_t *st)   /* (track 3's own steps: none, or nothing put) */
+UI_SMALL static void proj_x10_fill(int8_t *m)          /* the block of the working sounds into m[0 .. PROJ_X10_CK] */
 {
     uint32_t j, n;
-    int8_t *m = d->micro;
-    for (n = 0; n < NSTEP; n++)
-        if (st[n].n)
-            return;
-    memset(m, 0, NSTEP);
     m[0] = (int8_t)CLIPPER_PROJ_MARK_10;
     for (j = 0; j < 2u; j++)
         for (n = 0; n < PROJ_X10; n++)
             m[1u + PROJ_X10 * j + n] = (int8_t)(uint8_t)clamp(trk[j].p[P_SPREAD + n] - TP[P_SPREAD + n].min, 0, 255);
     m[PROJ_X10_DM] = (int8_t)(uint8_t)clamp(song.g[G_DMODE], GP[G_DMODE].min, GP[G_DMODE].max);
     m[PROJ_X10_CK] = (int8_t)proj_x10_ck(m);
+}
+UI_SMALL static void proj_x10_put(proj_trk_t *d, const step_t *st)   /* (track 3's own steps: none, or nothing put) */
+{
+    uint32_t n;
+    for (n = 0; n < NSTEP; n++)
+        if (st[n].n)
+            return;
+    memset(d->micro, 0, NSTEP);
+    proj_x10_fill(d->micro);
 }
 UI_SMALL static int proj_x10_ok(const int8_t *m)
 {
@@ -578,6 +583,59 @@ UI_SMALL static int proj_import(project_t *q, const void *b, int n)
            proj_from_v2(q, (const project_v2_t *)b, n) || proj_from_v1(q, (const project_v1_t *)b, n);
 }
 
+#if CLIPPER_SYNTH
+/* (after Clipper 1.2) the 1.0 block of every project, out of the project: with steps on track 3 (a SLOOP project loaded)
+ * its nudges are its own, and the block had nowhere to go (its values came back at their defaults). Kept beside each
+ * project in RAM (proj_x10s, bound to its project by the project's sum), in flash in the project object's side record
+ * (storage.c st_side: SLOOP never reads a project's, its own save drops it), and in the editor's backup as object 14
+ * (editor.c). Track 3's nudges still hold it when it has no steps, as 1.0 .. 1.2 wrote it (they read it only there) */
+#define PROJ_X10_MAGIC 0x30315850u                   /* "PX10" */
+typedef struct {
+    uint32_t magic, sum;                             /* the project it belongs to: its sum */
+    int8_t m[PROJ_X10_CK + 1u];                      /* as in track 3's nudges */
+    uint8_t rsv[3];
+    uint32_t chk;                                    /* proj_hash of the bytes before */
+} proj_x10_t;
+#define PROJ_X10_N 7u                                /* 0..3 the slots, 4 any other (the backup's snapshot), 5 the
+                                                      * autosave, 6 the loop song mode put aside (proj_x10_at) */
+_Static_assert(sizeof(proj_x10_t) == 72u, "the 1.0 block beside a project");
+/* (in .pool, zeroed at boot: .noinit, which keeps proj_slot over a warm reset, has not 504 B left. So a live section
+ * stored while playing and not yet written to flash comes back from a warm reset without its block: with steps on
+ * track 3, its 1.0 values at their defaults) */
+static proj_x10_t proj_x10s[PROJ_X10_N] __attribute__((section(".pool")));
+static uint32_t proj_x10_at(const project_t *p);
+UI_SMALL static int proj_x10_valid(const proj_x10_t *x)
+{
+    return x->magic == PROJ_X10_MAGIC && x->chk == proj_hash(x, sizeof *x - 4u) && proj_x10_ok(x->m);
+}
+UI_SMALL static void proj_x10_seal(proj_x10_t *x, uint32_t sum)
+{
+    x->magic = PROJ_X10_MAGIC;
+    x->sum = sum;
+    x->rsv[0] = x->rsv[1] = x->rsv[2] = 0;
+    x->chk = proj_hash(x, sizeof *x - 4u);
+}
+UI_SMALL static const int8_t *proj_x10_of(const project_t *p)   /* p's 1.0 block: in track 3's nudges, else beside it, else 0 */
+{
+    const proj_x10_t *x = &proj_x10s[proj_x10_at(p)];
+    if (p->rsv[0] != CLIPPER_PROJ_MARK)
+        return 0;
+    if (proj_x10_ok(p->t[2].micro))
+        return p->t[2].micro;
+    return proj_x10_valid(x) && x->sum == p->sum ? x->m : 0;
+}
+#ifdef PROJ_HOST
+static uint32_t proj_x10_at(const project_t *p)      /* (host tests: the slots, else 4) */
+{
+    uint32_t i;
+    for (i = 0; i < 4u; i++)
+        if (p == &proj_slot[i])
+            return i;
+    return 4u;
+}
+#endif
+#endif
+
 /* ---- the working project <-> a project_t */
 UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, as a project */
 {
@@ -617,6 +675,13 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
 #endif
     }
     p->sum = proj_sum(p);
+#if CLIPPER_SYNTH
+    {   /* (after 1.2) and beside it, whatever track 3 holds */
+        proj_x10_t *x = &proj_x10s[proj_x10_at(p)];
+        proj_x10_fill(x->m);
+        proj_x10_seal(x, p->sum);
+    }
+#endif
 }
 
 /* a project's tracks (and its globals, all: a load; or only the drum level / reverb / delay: a song
@@ -625,6 +690,9 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
 UI_SMALL static void proj_apply(const project_t *p, int all)
 {
     uint32_t i, k;
+#if CLIPPER_SYNTH
+    const int8_t *xm = proj_x10_of(p);                  /* (1.0's values: track 3's nudges, or beside the project) */
+#endif
     for (i = 0; i < PROJ_NG; i++)
         if (all ? i != G_SLOT && i != G_LOAD && i != G_SAVE && i != G_SYNC && i != G_MIDI && i != G_ROUTE :
                   !CLIPPER_SYNTH && (i == G_DRLVL || i == G_DRREV))   /* (Clipper: the master EQ, not a section's) */
@@ -643,9 +711,8 @@ UI_SMALL static void proj_apply(const project_t *p, int all)
                                     i >= P_E0 && i <= P_E7 ? &ENGINES[e]->edit[i - P_E0] : &TP[i];
             int32_t v = i < PROJ_E0 ? s->p[i] : i >= P_E0 ? s->p[PROJ_E0 + i - P_E0] : d->def;
 #if CLIPPER_SYNTH
-            if (i >= P_SPREAD && i < P_E0 && k < 2u) {    /* (1.0: in track 3's nudges) */
-                v = p->rsv[0] == CLIPPER_PROJ_MARK && proj_x10_ok(p->t[2].micro) ?
-                    (uint8_t)p->t[2].micro[1u + PROJ_X10 * k + (i - P_SPREAD)] + d->min : d->def;
+            if (i >= P_SPREAD && i < P_E0 && k < 2u) {    /* (1.0: in track 3's nudges, or beside the project) */
+                v = xm ? (uint8_t)xm[1u + PROJ_X10 * k + (i - P_SPREAD)] + d->min : d->def;
             } else if (i >= P_VINT && i < P_E0 && k < 2u && p->rsv[0] == CLIPPER_PROJ_MARK) {
                 int x = proj_x9_get(p->t[3].lock, k, i - P_VINT);   /* (0.9: in track 4) */
                 v = x < 0 ? d->def : x + d->min;
@@ -669,13 +736,10 @@ UI_SMALL static void proj_apply(const project_t *p, int all)
         for (i = 0; i < NSTEP; i++)                     /* the nudges and locks, each inside its range */
             t->micro[i] = (int8_t)clamp(s->micro[i], MICRO_MIN, MICRO_MAX);
 #if CLIPPER_SYNTH
-        if (k == 2u && p->rsv[0] == CLIPPER_PROJ_MARK && proj_x10_ok(s->micro)) {
+        if (k == 2u && p->rsv[0] == CLIPPER_PROJ_MARK && proj_x10_ok(s->micro))
             memset(t->micro, 0, sizeof t->micro);       /* (1.0's values, not nudges) */
-            if (all)
-                song.g[G_DMODE] = (int16_t)clamp((uint8_t)s->micro[PROJ_X10_DM], GP[G_DMODE].min, GP[G_DMODE].max);
-        } else if (k == 2u && all) {
-            song.g[G_DMODE] = GP[G_DMODE].def;
-        }
+        if (k == 2u && all)
+            song.g[G_DMODE] = xm ? (int16_t)clamp((uint8_t)xm[PROJ_X10_DM], GP[G_DMODE].min, GP[G_DMODE].max) : GP[G_DMODE].def;
 #endif
         for (i = 0; i < NSTEP / 4u; i++) {              /* the conditions: 3 means normal (0) */
             uint32_t b = s->fill[i], j;
@@ -707,6 +771,7 @@ UI_SMALL static void proj_apply(const project_t *p, int all)
                     st->n = 4;
                 if (st->time > ST_REST)
                     st->time = ST_REST;
+                st->vel &= 127u;                    /* (after Clipper 1.2: past 127 from a file, up to twice as loud) */
                 for (j = 0; j < 4u; j++)
                     st->note[j] &= 127u;
             }
@@ -727,6 +792,8 @@ UI_SMALL static void proj_apply(const project_t *p, int all)
 #include "arranger_scene.c"
 #endif
 static uint8_t sec_dirty, song_dirty;           /* live sections / the song: in RAM, not yet in flash */
+static int proj_st_save(uint32_t obj, const project_t *p);
+static void proj_x10_load(uint32_t obj, const project_t *q);
 #if FELUCCA_FLASH
 /* slot from flash into RAM (format 5, or an old one converted) */
 static union {
@@ -743,6 +810,8 @@ UI_SMALL static void proj_fetch(uint32_t slot)
     int n = st_load(OBJ_PROJECT0 + (slot & 3u), &proj_tmp, sizeof proj_tmp);
     if (!proj_import(q, &proj_tmp, n))
         q->magic = 0;
+    else
+        proj_x10_load(OBJ_PROJECT0 + (slot & 3u), q);   /* (after Clipper 1.2) its 1.0 block */
 }
 #include "fm6_bank.c"                           /* the FM6 patch bank (eng_fm6.c PTCH B1..B27): staged in proj_tmp */
 #endif
@@ -756,7 +825,7 @@ UI_SMALL static void project_save(uint32_t slot)
     proj_capture(p);
 #if FELUCCA_FLASH
     if (flash_ok) {
-        ui_message(st_save(OBJ_PROJECT0 + (slot & 3u), p, sizeof *p) ? "SAVE ERROR" : "SAVED");
+        ui_message(proj_st_save(OBJ_PROJECT0 + (slot & 3u), p) ? "SAVE ERROR" : "SAVED");
         return;
     }
 #endif
@@ -808,6 +877,68 @@ UI_SMALL static void project_load(uint32_t slot)
 #define AUTOSAVE_GAP 20000u                    /* ms between two saves at least */
 static project_t autosave_buf __attribute__((section(".pool")));
 static uint32_t autosave_hash, autosave_ms, autosave_checked;
+#if CLIPPER_SYNTH
+_Static_assert(sizeof(proj_x10_t) <= ST_SIDE_MAX, "the 1.0 block in a project object's side record");
+static uint32_t proj_x10_at(const project_t *p)      /* the 1.0 block beside project p (PROJ_X10_N) */
+{
+    uint32_t i;
+    for (i = 0; i < 4u; i++)
+        if (p == &proj_slot[i])
+            return i;
+    return p == &autosave_buf ? 5u : p == &song_keep ? 6u : 4u;
+}
+#endif
+/* what the autosave compares: the project's sum and (after Clipper 1.2) its 1.0 block's, which is not in the project
+ * while track 3 has steps (a change of SPREAD then changes no byte of the project) */
+UI_SMALL static uint32_t proj_sig(const project_t *p)
+{
+#if CLIPPER_SYNTH
+    const proj_x10_t *x = &proj_x10s[proj_x10_at(p)];
+    if (proj_x10_valid(x) && x->sum == p->sum)
+        return p->sum ^ x->chk;
+#endif
+    return p->sum;
+}
+/* a project into flash (OBJ_PROJECT0 + k, OBJ_AUTOSAVE): (after Clipper 1.2) its 1.0 block in the side record */
+UI_SMALL static int proj_st_save(uint32_t obj, const project_t *p)
+{
+    int rc;
+#if CLIPPER_SYNTH
+    const proj_x10_t *x = &proj_x10s[proj_x10_at(p)];
+    st_side = proj_x10_valid(x) && x->sum == p->sum ? x : 0;
+    st_side_len = sizeof *x;
+#endif
+    rc = st_save(obj, p, sizeof *p);
+    st_side = 0;
+    return rc;
+}
+#if CLIPPER_SYNTH
+static uint32_t proj_restored_sum;                  /* the working project a backup restored last (object 0): its sum */
+UI_SMALL static void proj_x10_set(const int8_t *m)   /* a 1.0 block's values into the working sounds (backup object 14) */
+{
+    uint32_t k, i;
+    fm1_irq_off();
+    for (k = 0; k < 2u; k++)
+        for (i = 0; i < PROJ_X10; i++)
+            trk[k].p[P_SPREAD + i] = (int16_t)clamp((uint8_t)m[1u + PROJ_X10 * k + i] + TP[P_SPREAD + i].min,
+                                                    TP[P_SPREAD + i].min, TP[P_SPREAD + i].max);
+    song.g[G_DMODE] = (int16_t)clamp((uint8_t)m[PROJ_X10_DM], GP[G_DMODE].min, GP[G_DMODE].max);
+    fm1_irq_on();
+}
+#endif
+/* q just read from obj: its 1.0 block from the side record, when it is q's */
+UI_SMALL static void proj_x10_load(uint32_t obj, const project_t *q)
+{
+#if CLIPPER_SYNTH
+    proj_x10_t x, *y = &proj_x10s[proj_x10_at(q)];
+    if (st_side_load(obj, &x, sizeof x) == 0 && proj_x10_valid(&x) && x.sum == q->sum)
+        *y = x;
+    else if (!proj_x10_valid(y) || y->sum != q->sum)
+        memset(y, 0, sizeof *y);
+#else
+    (void)obj, (void)q;
+#endif
+}
 
 UI_SMALL static int audio_quiet(void)
 {
@@ -831,10 +962,10 @@ UI_SMALL static void autosave_tick(void)                /* main loop */
         return;
     autosave_checked = now;
     proj_capture(&autosave_buf);
-    h = autosave_buf.sum;
+    h = proj_sig(&autosave_buf);
     if (h == autosave_hash || !audio_quiet())
         return;
-    if (st_save(OBJ_AUTOSAVE, &autosave_buf, sizeof autosave_buf) == 0)
+    if (proj_st_save(OBJ_AUTOSAVE, &autosave_buf) == 0)
         autosave_hash = h;
     autosave_ms = fm1_ms;
 #endif
@@ -850,7 +981,8 @@ UI_SMALL static void autosave_resume(void)              /* power-on: the project
     n = st_load(OBJ_AUTOSAVE, &proj_tmp, sizeof proj_tmp);
     if (!proj_import(q, &proj_tmp, n))
         return;
-    autosave_hash = q->sum;
+    proj_x10_load(OBJ_AUTOSAVE, q);                    /* (after Clipper 1.2) its 1.0 block */
+    autosave_hash = proj_sig(q);
     proj_apply(q, 1);
     song.sel = (uint8_t)(q->sel < NTRK && !CLIPPER_SYNTH ? q->sel : 0u);
     for (n = 0; n < NPART; n++)
@@ -1031,6 +1163,8 @@ UI_SMALL static void persist_boot(void)                    /* before settings_in
                 int n = st_load(OBJ_PROJECT0 + i, &proj_tmp, sizeof proj_tmp);
                 if (n != (int)sizeof proj_slot[i] || memcmp(&proj_tmp.v5, &proj_slot[i], sizeof proj_slot[i]))
                     sec_dirty |= (uint8_t)(1u << i);
+                else
+                    proj_x10_load(OBJ_PROJECT0 + i, &proj_slot[i]);   /* (Clipper: its 1.0 block, from flash) */
             }
     }
     dsu_boot();                                    /* SLOOP 2.5: the SYN kits (after the settings) */
@@ -1187,13 +1321,28 @@ UI_SMALL static uint32_t project_restore(uint32_t slot, const void *raw, uint32_
     }
     if (!proj_import(&autosave_buf, raw, (int)n))
         return 2;
+#if CLIPPER_SYNTH
+    {   /* (its 1.0 block until object 14 brings it: the backup snapshot's, LIST's, when it is that project) */
+        proj_x10_t *x = &proj_x10s[proj_x10_at(&autosave_buf)];
+        if (proj_x10_valid(&proj_x10s[4]) && proj_x10s[4].sum == autosave_buf.sum)
+            *x = proj_x10s[4];
+        else
+            memset(x, 0, sizeof *x);
+    }
+#endif
     if (slot == 4u) {
         project_apply(&autosave_buf);
+#if CLIPPER_SYNTH
+        proj_restored_sum = autosave_buf.sum;           /* (object 14 may bring its 1.0 block next) */
+#endif
         return 0;
     }
-    if (!flash_ok || st_save(OBJ_PROJECT0 + slot, &autosave_buf, sizeof autosave_buf))
+    if (!flash_ok || proj_st_save(OBJ_PROJECT0 + slot, &autosave_buf))
         return 4;
     memcpy(&proj_slot[slot], &autosave_buf, sizeof proj_slot[slot]);
+#if CLIPPER_SYNTH
+    proj_x10s[slot] = proj_x10s[proj_x10_at(&autosave_buf)];   /* (its 1.0 block, when it has one: object 14 brings it) */
+#endif
     proj_v6_ins_ok[slot] = proj_v6_ins_ok[4];           /* (a SLOOP 2.6 project's INSERT goes with it) */
     memcpy(proj_v6_ins[slot], proj_v6_ins[4], sizeof proj_v6_ins[slot]);
     sec_dirty &= (uint8_t)~(1u << slot);
@@ -1238,7 +1387,7 @@ UI_SMALL static void sections_write(void)                        /* the dirty se
 #if FELUCCA_FLASH
     if (flash_ok)
         for (i = 0; i < 4u; i++)
-            if (((sec_dirty >> i) & 1u) && st_save(OBJ_PROJECT0 + i, &proj_slot[i], sizeof proj_slot[i]) == 0)
+            if (((sec_dirty >> i) & 1u) && proj_st_save(OBJ_PROJECT0 + i, &proj_slot[i]) == 0)
                 sec_dirty &= (uint8_t)~(1u << i);       /* (a failed write stays dirty: tried again later) */
     if (!flash_ok)
 #endif
@@ -1257,8 +1406,8 @@ UI_SMALL static void persist_flush_now(void)
 #if FELUCCA_FLASH
     if (flash_ok && !arrangement_clock.running) {     /* (a song playing: the tracks hold a section) */
         proj_capture(&autosave_buf);
-        if (autosave_buf.sum != autosave_hash && st_save(OBJ_AUTOSAVE, &autosave_buf, sizeof autosave_buf) == 0)
-            autosave_hash = autosave_buf.sum;
+        if (proj_sig(&autosave_buf) != autosave_hash && proj_st_save(OBJ_AUTOSAVE, &autosave_buf) == 0)
+            autosave_hash = proj_sig(&autosave_buf);
     }
 #endif
 }

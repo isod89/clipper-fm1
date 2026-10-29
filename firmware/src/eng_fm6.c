@@ -347,6 +347,10 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
         return;                                         /* every carrier below the threshold */
     /* the voice's amplitude ramp x VOICE_FS (one carrier at full: VOICE_FS / 2), six voices in unison ~ one */
     k = t->p[P_VOICE] == V_UNISON ? VOICE_FS * 2 / 5 : VOICE_FS;
+#if CLIPPER_SYNTH   /* (after Clipper 1.2) UNI4 / UNI2 as well: 4 (2) voices at random phases ~ one (they had 2 (1.4)) */
+    if (t->p[P_VOICE] == V_PUNI4 || t->p[P_VOICE] == V_PUNI2)
+        k = t->p[P_VOICE] == V_PUNI4 ? VOICE_FS / 2 : VOICE_FS * 7 / 10;
+#endif
     a = mulq15(m->amp0, k);
     da = (mulq15(m->amp1, k) - a) >> FM6_LG_N;
     for (i = 0; i < FM6_N; i++) {
@@ -379,6 +383,26 @@ static const preset_t FM6_PRESETS[] = {
     {"DRAWBARS", {0, 0, 0, 0, 0, 0, 0, 6}, {0, 0, 127, 0}, 0, 0, FX(10, 40, 0, 30)},
     {"NYLON PICK", {0, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 127, 0}, 0, 0, FX(0, 20, 35, 30)},
 };
+
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the six operators moved together by r (Q32) of a turn of
+ * the note, each by its own frequency's share (fixed ones too): the relative phases, the timbre, kept (phases 0 from
+ * silence: every voice in phase) */
+static void fm6_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    fm6_note_t *nt = fm6_note_of(t, v);
+    uint32_t tr = (uint32_t)(t - trk), k;
+    int32_t lf, f0;
+    if (!nt || tr >= NPART)
+        return;
+    lf = fm6_note_logfreq(v->pitch16 + (fm6_eff[tr].p[FP_TRNSP] - 24) * 16, v->fine);
+    f0 = fm6_freq(lf);
+    if (f0 <= 0)
+        return;
+    for (k = 0; k < 6u; k++) {
+        int32_t fk = fm6_freq((nt->fixed >> k) & 1u ? nt->base[k] : lf + nt->base[k]);   /* Q24 cycles a sample */
+        nt->op[k].phase = (int32_t)((uint32_t)nt->op[k].phase + (uint32_t)(((uint64_t)(r >> 8) * (uint32_t)fk) / (uint32_t)f0));
+    }
+}
 
 static const engine_t ENG_FM6 = {
     "FM6", {"OPS", "PATCH"},

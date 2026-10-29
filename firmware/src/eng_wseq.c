@@ -83,7 +83,8 @@ static void wseq_note_on(track_t *t, voice_t *v)
     v->s[3] = 1;
     v->s[5] = q->st[v->s[2]].lvl * 2184;            /* (the level smoothed: from the first step's) */
     if (!v->env && !v->env_out)
-        v->s[0] = v->s[1] = 0;
+        v->s[0] = v->s[1] = v->s[6] = 0;             /* (after Clipper 1.2, s[6]: each step's start phase; UNISON: */
+                                                     /* its own, kept as its phases are when sounding) */
     if (!v->s[4])
         v->s[4] = (int32_t)(0x2545F491u ^ ((uint32_t)v->note * 2654435761u));
 }
@@ -97,7 +98,7 @@ static void wseq_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     uint32_t xf, xinv = 0, pos = v->ph[2], into;
     int32_t k = v->s[2], dir = v->s[3] & 0x80 ? -1 : 1, stopped = (v->s[3] & WSEQ_STOP) != 0;
     int32_t pscale = clamp(p[P_E5], 0, 127), ic1 = v->s[0], ic2 = v->s[1], nk, gs = v->s[5];
-    uint32_t pa = v->ph[0], pb = v->ph[1], ia, ib, rnd = (uint32_t)v->s[4];
+    uint32_t pa = v->ph[0], pb = v->ph[1], ia, ib, rnd = (uint32_t)v->s[4], p0 = (uint32_t)v->s[6];
     int hia, hib;
     tsvf_t flt;
     if (len < 64u)
@@ -144,7 +145,7 @@ static void wseq_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
                         pa = pb;
                         gs = q->st[k].lvl * 2184;    /* (faded in: at its level) */
                     }
-                    pb = 0;
+                    pb = p0;                         /* (after Clipper 1.2: UNISON's spread, else 0) */
                     ia = ib;
                     hia = hib;
                     {
@@ -191,6 +192,20 @@ static const preset_t WSEQ_PRESETS[] = {
     {"DORIAN RUN", {14, 24, 0, WL_PING, 0, 64, 108, 10}, {0, 80, 110, 30}, 0, 1, FX(0, 10, 40, 30)},
     {"PING PONG", {15, 40, 30, WL_PING, 0, 64, 110, 10}, {0, 90, 110, 50}, 0, 0, FX(0, 20, 40, 50)},
 };
+
+/* (after Clipper 1.2) UNISON (voice.c unison_spread): the step's oscillator and the next one's moved by r
+ * (Q32) of a turn of the note, every next step's start too, and the noise from its own seed (from 0 at each note and
+ * step: every voice in phase) */
+static void wseq_spread(track_t *t, voice_t *v, uint32_t r)
+{
+    (void)t;
+    v->ph[0] += r;
+    v->ph[1] += r;
+    v->s[6] = (int32_t)r;                            /* (each step starts from 0: every voice in phase from the second) */
+    v->s[4] = (int32_t)((uint32_t)v->s[4] ^ r);      /* (NOISE: the note's seed) */
+    if (!v->s[4])
+        v->s[4] = 1;
+}
 
 static const engine_t ENG_WSEQ = {
     "WSEQ", {"SEQUENCE", "TONE"},

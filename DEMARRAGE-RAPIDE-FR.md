@@ -1,4 +1,4 @@
-# Clipper — démarrage rapide (version 1.2)
+# Clipper — démarrage rapide (version 1.3)
 
 **Clipper** est un firmware de **synthétiseur** pour le M-VAVE FM-1 : un seul instrument, comme le firmware d'origine, Felucca ou Baudgirl. Ce n'est plus une groovebox : pas de pistes, pas de boîte à rythmes, pas de mode song, pas de samples intégrés. Il garde de SLOOP les 12 moteurs, les effets, l'arpégiateur, le séquenceur de pas, l'audio USB et le MIDI. Il ajoute **HYBRID**, une voix à 3 oscillateurs, 2 filtres et une matrice de modulation de 16 slots, avec 32 sons d'usine. Il ajoute aussi le pitch bend, la molette, l'aftertouch et la pédale de sustain sur tous les moteurs.
 
@@ -39,7 +39,7 @@ Clipper vit dans son propre dossier, **`CLIPPER`**, à côté de celui de SLOOP.
 | Adresse | http://localhost:**8766** | http://localhost:**8767** |
 | Écran de démarrage | voilier, « sloop » | trois-mâts, « clipper » |
 
-Sur la FM-1, Clipper se reconnaît à son écran de démarrage (**1.2** sous le logo) et à HOME (maintenu) → SYS → ABOUT, qui affiche **CLIPPER 1.2**.
+Sur la FM-1, Clipper se reconnaît à son écran de démarrage (**1.3** sous le logo) et à HOME (maintenu) → SYS → ABOUT, qui affiche **CLIPPER 1.3**.
 
 ## 1. Compiler et installer
 
@@ -256,4 +256,4 @@ Certains entendent un craquement ou un bruit dans le canal gauche, avec la réve
 ## Revenir en arrière
 
 - **Vers SLOOP** : lance `INSTALL-SLOOP.bat` depuis le dossier de SLOOP. Un son réglé sur HYBRID y jouera un autre moteur.
-- **Vers le firmware officiel** : passe par la page d'installation (« Revenir au firmware officiel (V15) »), après avoir fait une sauvegarde.
+- **Vers le firmware officiel** : passe par la page d'installation (« Revenir au firmware officiel », avec le FM-1.fwsc officiel de M-VAVE : V16, ou V15), après avoir fait une sauvegarde.

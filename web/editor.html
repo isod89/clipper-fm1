@@ -2044,8 +2044,9 @@ function b64dec(s) {
 /* object ids (firmware editor.c ED_BK_IDS): 0 the working project, 1 the settings, 2..5 projects A..D,
    6..7 the user preset banks, 32..35 the sample slots USR1..4 (35, USR4: SLOOP 2.4) */
 /* RESTORE: the objects in the order they are written back (banks first; 8 = the FM6 patch bank, firmware v9: a
-   file without it restores fine, a v8 device gets no object 8 sent; 9 = the SYN drum kits, firmware v10, likewise) */
-const BK = { FORMAT: "sloop-backup", VERSION: 1, SAMPLES: [32, 33, 34, 35], RESTORE: [6, 7, 8, 9, 2, 3, 4, 5, 0, 1] };
+   file without it restores fine, a v8 device gets no object 8 sent; 9 = the SYN drum kits, firmware v10, likewise;
+   Clipper: 12 / 13 the user presets' side records / tails after 6, 7; 14 the projects' 1.0 blocks after 0 and 2..5) */
+const BK = { FORMAT: "sloop-backup", VERSION: 1, SAMPLES: [32, 33, 34, 35], RESTORE: [6, 7, 12, 13, 8, 9, 2, 3, 4, 5, 0, 14, 1] };
 class BackupError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
 /* read everything; progress(done, total bytes) */
 async function backupCapture(rq, info, progress = () => {}) {
@@ -2097,7 +2098,7 @@ async function backupRestore(rq, file, progress = () => {}) {
     if (!m.has(id)) continue;
     const d = m.get(id);
     let r = parse[CMD.BK_PUT](await rq(req.bkBegin(id, d.length, crc32(d)), { timeout: 1500, retries: 1 }));
-    if ((r.rc === 1 || r.rc === 5) && (id === 8 || id === 9)) continue;   /* a device without the FM6 bank (v8) / the SYN kits
+    if ((r.rc === 1 || r.rc === 5) && (id === 8 || id === 9 || id === 12 || id === 13 || id === 14)) continue;   /* a device without the FM6 bank (v8) / the SYN kits
                                                        * (v9): skipped (its BK_PUT answers an unknown id's begin with 5) */
     if (r.rc) throw new BackupError("bkWrite", `begin ${id} rc ${r.rc}`);
     for (let off = 0; off < d.length; off += 256) {

@@ -78,7 +78,8 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n, uint32_t fresh)
         int32_t x = b[i], y;
         t->dist_hp += (x - t->dist_hp + 64) >> 7;           /* ~55 Hz low cut: keep the bass out of the clipper */
         x = clamp(x - t->dist_hp, -230000, 230000);         /* (x >> 2) * g fits 32 bits; the clip is flat out there */
-        y = softclip((((x >> 2) * g) >> 10) + bias) - b0;   /* >> 2 first: no overflow for loud poly */
+        y = softclip(MULQ12R(x, g, 2) + bias) - b0;         /* (as (x >> 2) * g >> 10 in 32 bits: no overflow for loud
+                                                             * poly; SLOOP Pro #4: rounded, no step of 4 x the drive) */
         t->dist_lp1 += mulq15(y - t->dist_lp1, k);         /* two poles: tames the fizz */
         t->dist_lp2 += mulq15(t->dist_lp1 - t->dist_lp2, k);
         y = mulq15(t->dist_lp2, mk);
@@ -1136,6 +1137,13 @@ static uint32_t part_pending(track_t *t, int32_t fmw)
 static void part_apply(track_t *t, int32_t fmw)
 {
     uint32_t k = (uint32_t)(t - trk) % NPART;
+    if (t->fm_eff && t->fm_eff != fmw && ENGINES[t->engine % NENGINES] == &ENG_VECTOR) {
+        uint32_t i;                                     /* (after Clipper 1.2) VECTOR keeps one set of filter states for
+                                                         * every MODEL (eng_vector.c s[0..3]): a ladder's (x 4096) read by
+                                                         * an SVF burst at full scale; cleared while the part is silent */
+        for (i = 0; i < NVOICE; i++)
+            t->v[i].s[0] = t->v[i].s[1] = t->v[i].s[2] = t->v[i].s[3] = 0;
+    }
     t->fm_eff = (uint8_t)fmw;
     if (ENGINES[t->engine % NENGINES] == &ENG_WAVE)
         wt_tab_eff[k] = (int16_t)((uint32_t)t->p[P_E0] % WT_NALL + 1u);
@@ -1323,15 +1331,19 @@ static void mix_part1(track_t *t, uint32_t n)
         t->lvl = mix_glide(lvl0, lvl), t->gpl = mix_glide(gl0, gl), t->gpr = mix_glide(gr0, gr);
         dl = (t->lvl - lvl0) >> CTL_LOG2, dgl = t->gpl - gl0, dgr = t->gpr - gr0;
         for (i = 0; i < n; i++) {
+            int32_t lv = lvl0 + dl * (int32_t)i;       /* (SLOOP Pro #4: rounded, all of b, in 32 bits as the >> 3 / >> 2
+                                                         * first were: they floored the part to 2..9 LSB) */
 #if NVOICE > 8                                          /* Clipper: 12 / 16 loud voices: one more bit of headroom */
-            int32_t x = ((clamp(b[i], -PART_MAX * 2, PART_MAX * 2) >> 3) * (lvl0 + dl * (int32_t)i)) >> 9, a;
+            int32_t bi = clamp(b[i], -PART_MAX * 2, PART_MAX * 2), x = MULQ12R(bi, lv, 3), a;
 #else
-            int32_t x = ((clamp(b[i], -PART_MAX, PART_MAX) >> 2) * (lvl0 + dl * (int32_t)i)) >> 10, a;   /* pre-shift: 8
-                                                         * loud voices (1.0: bounded: x LEVEL 127 within 32 bits) */
+            int32_t bi = clamp(b[i], -PART_MAX, PART_MAX), x = MULQ12R(bi, lv, 2), a;   /* (pre-shift: 8 loud voices,
+                                                         * 1.0: bounded: x LEVEL 127 within 32 bits) */
 #endif
             int32_t xs, g = ga + (((gb - ga) * (int32_t)i) >> CTL_LOG2);
-            if (g < 32767)
-                x = (x >> 4) * (g >> 3) >> 8;           /* (Q15 in two halves: no 32-bit overflow) */
+            if (g < 32767) {                            /* (always, at rest: mulq15(32767, 32767) is 32766) */
+                g >>= 3;                                /* (Q12: no 32-bit overflow) */
+                x = MULQ12R(x, g, 4);
+            }
             a = x < 0 ? -x : x;
             xs = clamp(x, -xmax, xmax);                 /* sends: mulq15 would overflow */
             if (a > pk)
@@ -1347,20 +1359,22 @@ static void mix_part1(track_t *t, uint32_t n)
             gl = gl0 + ((dgl * (int32_t)i) >> CTL_LOG2), gr = gr0 + ((dgr * (int32_t)i) >> CTL_LOG2);   /* (0.7) */
 #if CLIPPER_SYNTH
             if (side) {                                 /* the chorus's left - right, through the same level */
+                int32_t si = side[i];
 #if NVOICE > 8
-                int32_t sd = ((side[i] >> 3) * (lvl0 + dl * (int32_t)i)) >> 9;
+                int32_t sd = MULQ12R(si, lv, 3);
 #else
-                int32_t sd = ((side[i] >> 2) * (lvl0 + dl * (int32_t)i)) >> 10;
+                int32_t sd = MULQ12R(si, lv, 2);
 #endif
                 if (g < 32767)
-                    sd = (sd >> 4) * (g >> 3) >> 8;
-                mix_l[i] += (((x + sd) >> 4) * gl) >> 8;
-                mix_r[i] += (((x - sd) >> 4) * gr) >> 8;
+                    sd = MULQ12R(sd, g, 4);             /* (g: Q12 above) */
+                mix_l[i] += ((x + sd) * (gl >> 4) + 128) >> 8;
+                mix_r[i] += ((x - sd) * (gr >> 4) + 128) >> 8;
                 continue;
             }
 #endif
-            mix_l[i] += ((x >> 4) * gl) >> 8;           /* (x may pass 2^19: >> 4 first) */
-            mix_r[i] += ((x >> 4) * gr) >> 8;
+            mix_l[i] += (x * (gl >> 4) + 128) >> 8;     /* (x may pass 2^19: PAN's Q12 to Q8, exact at rest: 64 a step;
+                                                         * #4: x >> 4 floored the part to 16 LSB) */
+            mix_r[i] += (x * (gr >> 4) + 128) >> 8;
         }
         t->peak = pk;
     }
@@ -1514,15 +1528,16 @@ static void mix_block(int32_t *out, uint32_t n)
         static uint8_t usb_was;
         for (i = 0; i < n; i++) {
             int32_t m = m0 + (((m1 - m0) * (int32_t)i) >> CTL_LOG2);
-            ol[i] = ((clamp(mix_l[i], -MIX_MAX, MIX_MAX) >> 2) * m) >> 10;   /* (1.0: bounded first: x MASTER in 32 bits) */
-            orr[i] = ((clamp(mix_r[i], -MIX_MAX, MIX_MAX) >> 2) * m) >> 10;
+            int32_t xl = clamp(mix_l[i], -MIX_MAX, MIX_MAX), xr = clamp(mix_r[i], -MIX_MAX, MIX_MAX);
+            ol[i] = MULQ12R(xl, m, 2);                 /* (1.0: bounded first: x MASTER in 32 bits; #4: rounded, */
+            orr[i] = MULQ12R(xr, m, 2);                /* (x >> 2) * m >> 10 floored to 4 LSB) */
             master_pre(&ol[i], &orr[i]);
             if ((i & 1u)) {                             /* the visualiser: every other sample, as audio.c reads it */
                 vis_tap[2u * i] = (int16_t)knee(mix_l[i]);
                 vis_tap[2u * i + 1u] = (int16_t)knee(mix_r[i]);
             }
             if (usb_full_now) {                         /* USB AUDIO = FULL: MASTER all the way up (4096) */
-                ul[i] = (mix_l[i] >> 2) << 2, ur[i] = (mix_r[i] >> 2) << 2;
+                ul[i] = mix_l[i], ur[i] = mix_r[i];     /* (#4: x 4096 / 4096, every bit; it was floored to 4 LSB) */
                 master_pre_usb(&ul[i], &ur[i]);
             }
         }
