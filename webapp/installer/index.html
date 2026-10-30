@@ -1,0 +1,854 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only
+     Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--PWA--><link rel="manifest" href="../clipper.webmanifest"><meta name="theme-color" content="#000000"><link rel="icon" href="../icon-192.png"><!--/PWA-->
+<title>Clipper installer</title>
+<style>
+  :root { --bg: #000; --fg: #f2f2f2; --dim: #8a8a92; --tile: #16161a; --line: #2a2a30;
+          --blue: #287cff; --green: #1ecc70; --yellow: #ffc618; --orange: #ff621a; --red: #ff2c34; }
+  :root[data-theme="light"] { --bg: #f4f4f2; --fg: #111; --dim: #666; --tile: #e6e6e2; --line: #d0d0cc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.6 "Helvetica Neue", -apple-system, BlinkMacSystemFont, Arial, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 48px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .logo svg { display: block; width: 220px; height: auto; }
+  .logo rect:first-child { fill: transparent; }
+  .lang { font-size: 12px; color: var(--dim); cursor: pointer; text-decoration: underline; background: none;
+          border: 0; padding: 0; text-transform: lowercase; }
+  .strip { display: flex; height: 4px; margin: 20px 0 24px; }
+  .strip i { flex: 1; } .strip i:nth-child(1) { background: var(--blue); } .strip i:nth-child(2) { background: var(--green); }
+  .strip i:nth-child(3) { background: var(--yellow); } .strip i:nth-child(4) { background: var(--orange); }
+  h1 { font-size: 13px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin: 0 0 8px; }
+  .lead { font-size: 20px; line-height: 1.35; margin: 0 0 24px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 28px; }
+  .tile { background: var(--tile); padding: 10px 10px 12px; border-top: 3px solid var(--c); min-height: 92px; }
+  .tile b { display: block; font-size: 22px; font-weight: 600; color: var(--c); line-height: 1.1; }
+  .tile span { display: block; font-size: 12px; color: var(--dim); text-transform: lowercase; margin-top: 4px; }
+  p { margin: 0 0 14px; }
+  button#go { font: 600 15px/1 inherit; font-family: inherit; background: var(--orange); color: #000; border: 0;
+              padding: 16px 0; width: 100%; cursor: pointer; letter-spacing: .08em; text-transform: uppercase; }
+  button#go:disabled { background: var(--tile); color: var(--dim); cursor: default; }
+  #status { margin-top: 14px; min-height: 1.6em; font-variant-numeric: tabular-nums; }
+  .small { color: var(--dim); font-size: 12.5px; }
+  .exp { border: 1px solid var(--yellow); border-left: 4px solid var(--yellow); padding: 12px 16px; margin: 0 0 24px; }
+  .exp b { color: var(--yellow); letter-spacing: 0.08em; display: block; margin-bottom: 6px; }
+  .exp p { margin: 0; line-height: 1.45; }
+  .small a, a { color: inherit; }
+  progress { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; margin-top: 16px; border: 0; background: var(--tile); }
+  progress::-webkit-progress-bar { background: var(--tile); }
+  progress::-webkit-progress-value { background: var(--orange); }
+  progress::-moz-progress-bar { background: var(--orange); }
+  pre { color: var(--dim); font-size: 11px; white-space: pre-wrap; margin-top: 12px; max-height: 160px; overflow: auto; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0 18px; }
+  .ed { display: inline-block; margin: 8px 0 0; padding: 10px 14px; background: var(--tile); text-decoration: none; }
+  details { margin: 22px 0 0; } summary { cursor: pointer; font-weight: 600; }
+  button#stock-go { font: 600 14px/1 inherit; font-family: inherit; background: var(--tile); color: var(--fg); border: 1px solid var(--line);
+                    padding: 12px 16px; cursor: pointer; }
+  button#stock-go:disabled { color: var(--dim); cursor: default; }
+  h2 { font-size: 13px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin: 32px 0 10px; }
+  .about ul { margin: 0; padding-left: 18px; } .about li { margin: 0 0 6px; }
+  .engines { margin: 0; display: grid; gap: 2px; }
+  .engines div { display: grid; grid-template-columns: 84px 1fr; gap: 12px; padding: 8px 10px; background: var(--tile); }
+  .engines div:first-child { border-left: 3px solid var(--orange); }
+  .engines dt { font-weight: 600; letter-spacing: .04em; }
+  .engines dd { margin: 0; color: var(--fg); font-size: 14px; }
+  [data-l][hidden] { display: none; }
+  @media (max-width: 420px) { .tiles { grid-template-columns: repeat(2, 1fr); } .logo svg { width: 170px; }
+    .engines div { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 761 260" width="761" height="260" role="img" aria-label="Clipper">
+<rect width="761" height="260" fill="#000"/>
+<path d="M59.29 200.71 A100.00 100.00 0 1 1 200.71 200.71" fill="none" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<line x1="101.32" y1="181.00" x2="104.76" y2="81.24" stroke="#F2F2F2" stroke-width="7" stroke-linecap="round"/>
+<line x1="135.72" y1="181.00" x2="139.16" y2="62.32" stroke="#F2F2F2" stroke-width="7" stroke-linecap="round"/>
+<line x1="168.40" y1="181.00" x2="171.84" y2="86.40" stroke="#F2F2F2" stroke-width="7" stroke-linecap="round"/>
+<polygon points="109.92,88.12 110.75,96.96 111.91,105.71 113.40,114.36 115.23,122.93 117.38,131.40 119.87,139.78 122.69,148.08 125.84,156.27 129.33,164.38 133.14,172.40 107.34,172.40" fill="#FFC618"/>
+<polygon points="144.32,69.20 145.49,79.91 146.99,90.53 148.82,101.06 150.99,111.51 153.49,121.88 156.32,132.15 159.48,142.34 162.98,152.45 166.82,162.47 170.98,172.40 141.74,172.40" fill="#1ECC70"/>
+<polygon points="177.00,93.28 177.66,101.60 178.64,109.83 179.96,117.96 181.62,126.01 183.60,133.97 185.92,141.83 188.56,149.61 191.54,157.30 194.86,164.89 198.50,172.40 174.42,172.40" fill="#287CFF"/>
+<polygon points="98.74,91.56 98.74,172.40 56.60,168.96 61.63,161.66 66.48,154.27 71.15,146.78 75.63,139.18 79.94,131.49 84.06,123.70 88.00,115.82 91.76,107.83 95.34,99.74" fill="#FF621A"/>
+<line x1="73.80" y1="175.84" x2="51.44" y2="167.24" stroke="#F2F2F2" stroke-width="5" stroke-linecap="round"/>
+<polygon points="58.32,172.40 72.56,173.79 86.81,175.05 101.07,176.16 115.33,177.14 129.61,177.99 143.89,178.69 158.17,179.26 172.47,179.69 186.77,179.98 201.08,180.14 195.92,192.18 184.76,193.14 173.59,193.97 162.42,194.66 151.25,195.21 140.07,195.62 128.89,195.89 117.70,196.03 106.51,196.03 95.32,195.89 84.12,195.62" fill="#F2F2F2"/>
+<path d="M328.98 149.28 A30.00 30.00 0 1 1 328.98 110.72" fill="none" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<line x1="364.00" y1="68.00" x2="364.00" y2="160.00" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<line x1="392.00" y1="100.00" x2="392.00" y2="160.00" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<circle cx="392.00" cy="72.00" r="6.60" fill="#F2F2F2"/>
+<circle cx="450.00" cy="130.00" r="30.00" fill="none" stroke="#F2F2F2" stroke-width="12"/>
+<line x1="420.00" y1="130.00" x2="420.00" y2="196.00" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<circle cx="538.00" cy="130.00" r="30.00" fill="none" stroke="#F2F2F2" stroke-width="12"/>
+<line x1="508.00" y1="130.00" x2="508.00" y2="196.00" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<path d="M648.98 149.28 A30.00 30.00 0 1 1 656.00 130.00" fill="none" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<line x1="596.00" y1="130.00" x2="656.00" y2="130.00" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<line x1="684.00" y1="100.00" x2="684.00" y2="160.00" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+<path d="M684.00 130.00 A30.00 30.00 0 0 1 724.26 101.81" fill="none" stroke="#F2F2F2" stroke-width="12" stroke-linecap="round"/>
+</svg>
+</div><button class="lang" id="lang"></button></div>
+  <div class="strip"><i></i><i></i><i></i><i></i></div>
+  
+  
+  <div class="exp" role="note"><b data-t="expTitle"></b><p data-t="expText"></p></div>
+  <h1 data-t="kicker"></h1>
+  <section data-l="en">
+  <p class="lead">Clipper turns the FM-1 into a deep polyphonic synthesizer: 23 synthesis engines and 407 sounds, from HYBRID (three oscillators, two filters, a 16-slot matrix) to FM, wavetables, vector, wave sequencing, a Juno with its chorus and physical models; a 12-slot modulation matrix, four macros, a modulation sequencer and stereo voices on every sound, hall and shimmer reverbs, eight filter models, microtuning with Scala scales, and every parameter editable in your browser.</p>
+  </section>
+  <section data-l="fr">
+  <p class="lead">Clipper fait de la FM-1 un vrai synthétiseur polyphonique : 23 moteurs de synthèse et 407 sons, de HYBRID (trois oscillateurs, deux filtres, une matrice de 16 slots) à la FM, aux tables d'ondes, au vectoriel, au wave sequencing, à un Juno avec son chorus et aux modèles physiques ; une matrice de modulation de 12 slots, quatre macros, un séquenceur de modulation et des voix stéréo sur chaque son, des réverbs hall et shimmer, huit modèles de filtre, le micro-accordage avec les gammes Scala, et chaque paramètre éditable dans ton navigateur.</p>
+  </section>
+  <section data-l="ja">
+  <p class="lead">Clipper は FM-1 を本格的なポリフォニック・シンセサイザーに変えます。23 の音源エンジンと 407 の音色：HYBRID（3 オシレーター、2 フィルター、16 スロットのマトリクス）から FM、ウェーブテーブル、ベクター、ウェーブ・シーケンス、コーラス付きの Juno、物理モデリングまで。すべての音色に 12 スロットのモジュレーション・マトリクス、4 つのマクロ、モジュレーション・シーケンサー、ステレオ・ボイス。ホールとシマーのリバーブ、8 種類のフィルター・モデル、Scala 音階によるマイクロチューニング。すべてのパラメーターをブラウザから編集できます。</p>
+  </section>
+  <div class="tiles">
+    <div class="tile" style="--c: var(--blue)"><b>23</b><span data-t="tEng"></span></div>
+    <div class="tile" style="--c: var(--green)"><b>407</b><span data-t="tSnd"></span></div>
+    <div class="tile" style="--c: var(--yellow)"><b>8</b><span data-t="tHy"></span></div>
+    <div class="tile" style="--c: var(--orange)"><b>13</b><span data-t="tMx"></span></div>
+  </div>
+  <p data-t="intro"></p>
+  <p data-t="warn"></p>
+  <p><button id="go" disabled data-t="install"></button></p>
+  <progress id="bar" max="100" value="0"></progress>
+  <p id="status"></p>
+  <pre id="log"></pre>
+  <a class="ed" href="../editor/" data-t="editor"></a>
+  <p class="small"><a href="../editor/clipper-editor.html" download="clipper-editor-1.3.html" data-t="edOffline"></a></p>
+  <p><button id="app" class="ed" hidden data-t="appInstall"></button></p>
+  <section class="about" data-l="en">
+    <h2>Engines</h2>
+    <dl class="engines">
+      <div><dt>HYBRID</dt><dd>The Clipper voice. Three oscillators (saw, pulse, triangle, sine with feedback, morph, a seven-saw supersaw, FM, hard sync, wavefolder, noise), ring modulation, drift and drive; two filters (LP12, LP24, a Moog ladder, band-pass, high-pass, notch, peak) in series, in parallel or split; two envelopes and two tempo-synced LFOs per voice; a 16-slot modulation matrix; four macros.</dd></div>
+      <div><dt>FMX</dt><dd>Six operators after the Korg opsix: each its own wave (ten) and mode (PM, true linear FM or RING), a ratio or a fixed frequency, its own envelope; any operator into any other with its own amount, 40 templates to start from, a pitch envelope. It also plays the DX7 voices of the bank.</dd></div>
+      <div><dt>FM6</dt><dd>Six-operator FM with the DX7's 32 algorithms. Load classic DX7 banks (.syx) from the editor.</dd></div>
+      <div><dt>DIGITAL</dt><dd>Four-operator FM with eight algorithms: bells, basses, electric pianos.</dd></div>
+      <div><dt>WAVE</dt><dd>Wavetables: 16 tables of 16 frames (classic shapes, PWM, sync, FM, fold, formants, PPG-style sweeps…) morphed by POS, the envelope and the LFO, band-limited by octave so they never alias. Import your own (Serum-style WAV) from the editor.</dd></div>
+      <div><dt>WSEQ</dt><dd>Wave sequencing after the Korg Wavestation: each note plays a sequence of waves, pitches and levels at the song's tempo, each step crossfading into the next. 16 sequences.</dd></div>
+      <div><dt>VECTOR</dt><dd>Vector synthesis after the Sequential Prophet VS and the Wavestation's joystick: four waves at the corners of a square, a point (X, Y) mixing them, and paths that move it by themselves from each note.</dd></div>
+      <div><dt>JUNO</dt><dd>The Juno-6 / 60 / 106 idea: one DCO per voice with saw, pulse (PWM) or both, a sub and noise; the four-position high-pass, a 24 dB ladder, and the stereo BBD chorus I, II and I+II. The chorus is also an insert effect for any sound.</dd></div>
+      <div><dt>ANALOG</dt><dd>Virtual analog: two band-limited oscillators with PWM, noise and drive, into one of eight filter models: SVF, Moog ladder, MS-20, diode ladder, SEM, notch, band-pass, high-pass.</dd></div>
+      <div><dt>ACID</dt><dd>A 303-style bass line voice: saw or square into a self-oscillating ladder, the filter envelope, accent (louder, sharper, and the sweep that climbs over a run of accents), slides that glide without retriggering, and drive.</dd></div>
+      <div><dt>STRINGS</dt><dd>A 70s string machine: divide-down 16', 8' and 4' registers through a three-line ensemble chorus (slow sweep and fast shimmer), saw to square, a key-tracked filter.</dd></div>
+      <div><dt>MACRO</dt><dd>Four macro-oscillator models inspired by Mutable Instruments Plaits, each on three knobs: CHORD, SWARM (eight drifting oscillators), ADDITIVE (16 harmonics under a moving bump), SPEECH (formants speaking words), with a low-pass gate.</dd></div>
+      <div><dt>PHASE</dt><dd>Phase distortion in the tradition of the 80s CZ synths.</dd></div>
+      <div><dt>VPS</dt><dd>Vector phaseshaping (after Kleimola, Lazzarini, Timoney and Välimäki): a sine through a bent phase, from phase-distorted waves to formant sweeps, alias-free.</dd></div>
+      <div><dt>TERRAIN</dt><dd>Wave terrain synthesis: an orbit circles over one of eight surfaces; its position and size choose the harmonics, and it drifts for timbres that keep evolving.</dd></div>
+      <div><dt>PHYS</dt><dd>Physical models: plucked strings, bells and bars, drum heads, sympathetic strings (after Mutable Instruments Rings and DaisySP).</dd></div>
+      <div><dt>TRIO</dt><dd>The sound chip of the 8-bit home computers: three oscillators, ring modulation, sync and a multimode filter.</dd></div>
+      <div><dt>LOFI</dt><dd>Chiptune voice: pulse, triangle, wave RAM and pitch sweeps.</dd></div>
+      <div><dt>WHEEL</dt><dd>Tonewheel organ with nine drawbars.</dd></div>
+      <div><dt>VOICE</dt><dd>Formant synthesis: sung vowels from the keyboard.</dd></div>
+      <div><dt>NOISE</dt><dd>From analog hiss to metallic shift-register tones, through a resonant filter.</dd></div>
+      <div><dt>GRAIN</dt><dd>Granular clouds: on four sources of Clipper's own (a choir, a glass harmonica, a saw ensemble, breath), synthesized.</dd></div>
+      <div><dt>SAMPLE</dt><dd>Clipper's four sources as playable instruments.</dd></div>
+    </dl>
+    <h2>Play</h2>
+    <ul>
+      <li>8 voices of polyphony (12 or 16 as a build option, rendered on both processor cores), with glide, velocity, mono, legato, unison and poly unison (2 or 4 voices a note) on every engine.</li>
+      <li>Layer two sounds, split the keyboard between them, or play them as two parts on two MIDI channels (MULTI).</li>
+      <li>An arpeggiator with 15 modes, among them a Turing machine (TURNG) that loops and mutates a melody from the held notes; SPICE and DICE vary the arp's and the sequencer's notes the same way each time round.</li>
+      <li>A step sequencer with chords and recording, scales and chords on the keys, KBD HOLD.</li>
+      <li>Undo and compare on the FM-1, favourites, morph between two versions of a sound (MIDI CC 20), a randomizer by section.</li>
+      <li>MPE (per-note bend, pressure and slide), and MIDI over USB and TRS: pitch bend, mod wheel, expression, sustain pedal, channel and polyphonic aftertouch, the four macros on CC 16 to 19.</li>
+      <li>The FM-1 is also a USB audio interface: record it straight into your computer.</li>
+    </ul>
+    <h2>Sound</h2>
+    <ul>
+      <li>44.1 kHz. Band-limited oscillators everywhere: polyBLEP saws and pulses, polyBLAMP triangles, a band-limited hard sync, FM, feedback and wavefolding held below 20 kHz.</li>
+      <li>Zero-delay-feedback filters: a 24 dB Moog ladder that self-oscillates, SVFs whose resonance saturates softly, and on ANALOG, WAVE and VECTOR eight models to choose from (SVF, Moog, MS-20, diode ladder, SEM, notch, band-pass, high-pass).</li>
+      <li>Modulation on every engine: a twelve-slot matrix, a second and third LFO, a second envelope that can loop, four macros (BRITE, TIMBR, MOTN, SPACE, also on CC 16 to 19), and the MOD SEQ, a four-lane modulation sequencer. VINTAGE gives each voice its own small tuning, filter offset and drift, like an analog poly; SPREAD gives each voice its own place in the stereo field.</li>
+      <li>Tunings: equal, just, Pythagorean, meantone, Werckmeister III, Kirnberger III, the maqams Rast and Bayati, slendro, pelog, 19, 24 and 31-EDO, and any Scala (.scl) scale sent from the editor.</li>
+      <li>Effects: an insert per sound (drive, fuzz, fold, crush, phaser, flanger, chorus, the Juno chorus), distortion, stereo chorus, a tempo-synced delay (mono, ping-pong, tape), room, plate, hall and shimmer reverbs (after Dattorro). A master 3-band EQ, a bus compressor, a look-ahead limiter. Level-matched presets; settings glide instead of clicking.</li>
+      <li>A web editor for every parameter: the whole HYBRID and FMX patches, the MOD SEQ, tunings and .scl files, DX7 banks, your own wavetables, your sound library, backups.</li>
+    </ul>
+  </section>
+  <section class="about" data-l="fr">
+    <h2>Moteurs</h2>
+    <dl class="engines">
+      <div><dt>HYBRID</dt><dd>La voix de Clipper. Trois oscillateurs (dent de scie, pulse, triangle, sinus avec feedback, morph, supersaw à sept dents de scie, FM, hard sync, wavefolder, bruit), modulation en anneau, drift et saturation ; deux filtres (LP12, LP24, ladder Moog, passe-bande, passe-haut, notch, peak) en série, en parallèle ou séparés ; deux enveloppes et deux LFO synchronisables au tempo par voix ; une matrice de modulation de 16 slots ; quatre macros.</dd></div>
+      <div><dt>FMX</dt><dd>Six opérateurs dans l'esprit du Korg opsix : chacun sa forme d'onde (dix) et son mode (PM, vraie FM linéaire ou RING), un rapport ou une fréquence fixe, son enveloppe ; n'importe quel opérateur vers n'importe quel autre avec sa quantité, 40 modèles de départ, une enveloppe de hauteur. Il joue aussi les voix DX7 de la banque.</dd></div>
+      <div><dt>FM6</dt><dd>FM à six opérateurs avec les 32 algorithmes du DX7. Charge les banques DX7 classiques (.syx) depuis l'éditeur.</dd></div>
+      <div><dt>DIGITAL</dt><dd>FM à quatre opérateurs, huit algorithmes : cloches, basses, pianos électriques.</dd></div>
+      <div><dt>WAVE</dt><dd>Tables d'ondes : 16 tables de 16 frames (formes classiques, PWM, sync, FM, fold, formants, balayages façon PPG…) parcourues par POS, l'enveloppe et le LFO, à bande limitée par octave : jamais de repliement. Importe les tiennes (WAV façon Serum) depuis l'éditeur.</dd></div>
+      <div><dt>WSEQ</dt><dd>Le wave sequencing du Korg Wavestation : chaque note joue une suite de formes d'onde, de hauteurs et de niveaux au tempo du morceau, chaque pas en fondu dans le suivant. 16 suites.</dd></div>
+      <div><dt>VECTOR</dt><dd>La synthèse vectorielle du Sequential Prophet VS et du joystick du Wavestation : quatre formes d'onde aux coins d'un carré, un point (X, Y) qui les mélange, et des trajets qui le déplacent tout seuls à chaque note.</dd></div>
+      <div><dt>JUNO</dt><dd>L'idée des Juno-6 / 60 / 106 : un DCO par voix avec dent de scie, impulsion (PWM) ou les deux, un sub et du bruit ; le passe-haut à quatre positions, un ladder 24 dB, et le chorus BBD stéréo I, II et I+II. Le chorus existe aussi en effet insert pour n'importe quel son.</dd></div>
+      <div><dt>ANALOG</dt><dd>Analogique virtuel : deux oscillateurs à bande limitée avec PWM, bruit et saturation, dans un des huit modèles de filtre : SVF, ladder Moog, MS-20, ladder à diodes, SEM, notch, passe-bande, passe-haut.</dd></div>
+      <div><dt>ACID</dt><dd>Une voix de basse façon 303 : dent de scie ou carré dans un ladder qui auto-oscille, l'enveloppe de filtre, l'accent (plus fort, plus vif, et le balayage qui grimpe sur une suite d'accents), des slides qui glissent sans relancer l'enveloppe, et la saturation.</dd></div>
+      <div><dt>STRINGS</dt><dd>Une string machine des années 70 : registres 16', 8' et 4' à division, un chorus d'ensemble à trois lignes (balayage lent et vibrato rapide), de la dent de scie au carré, un filtre qui suit le clavier.</dd></div>
+      <div><dt>MACRO</dt><dd>Quatre modèles de macro-oscillateurs inspirés de Mutable Instruments Plaits, chacun sur trois boutons : CHORD, SWARM (huit oscillateurs qui dérivent), ADDITIVE (16 harmoniques sous une bosse mobile), SPEECH (des formants qui disent des mots), avec un low-pass gate.</dd></div>
+      <div><dt>PHASE</dt><dd>Distorsion de phase, dans l'esprit des synthés CZ des années 80.</dd></div>
+      <div><dt>VPS</dt><dd>Le vector phaseshaping (d'après Kleimola, Lazzarini, Timoney et Välimäki) : un sinus lu à travers une phase pliée, des ondes à distorsion de phase jusqu'aux balayages de formants, sans repliement.</dd></div>
+      <div><dt>TERRAIN</dt><dd>La synthèse par wave terrain : une orbite tourne au-dessus d'une de huit surfaces ; sa position et sa taille choisissent les harmoniques, et elle dérive pour des timbres qui évoluent sans cesse.</dd></div>
+      <div><dt>PHYS</dt><dd>Modèles physiques : cordes pincées, cloches et lames, peaux de tambour, cordes sympathiques (d'après Mutable Instruments Rings et DaisySP).</dd></div>
+      <div><dt>TRIO</dt><dd>La puce sonore des ordinateurs 8 bits : trois oscillateurs, modulation en anneau, sync et filtre multimode.</dd></div>
+      <div><dt>LOFI</dt><dd>Voix chiptune : pulse, triangle, wave RAM et balayages de hauteur.</dd></div>
+      <div><dt>WHEEL</dt><dd>Orgue à roues phoniques, neuf tirettes.</dd></div>
+      <div><dt>VOICE</dt><dd>Synthèse de formants : des voyelles chantées au clavier.</dd></div>
+      <div><dt>NOISE</dt><dd>Du souffle analogique aux sons métalliques des registres à décalage, à travers un filtre résonant.</dd></div>
+      <div><dt>GRAIN</dt><dd>Des nuages granulaires : sur quatre sources propres à Clipper (un chœur, un harmonica de verre, un ensemble de dents de scie, du souffle), synthétisées.</dd></div>
+      <div><dt>SAMPLE</dt><dd>Les quatre sources de Clipper en instruments.</dd></div>
+    </dl>
+    <h2>Jouer</h2>
+    <ul>
+      <li>8 voix de polyphonie (12 ou 16 en option de compilation, calculées sur les deux cœurs du processeur), avec glide, vélocité, mono, legato, unisson et unisson polyphonique (2 ou 4 voix par note) sur tous les moteurs.</li>
+      <li>Superpose deux sons, partage le clavier entre eux, ou joue-les comme deux parties sur deux canaux MIDI (MULTI).</li>
+      <li>Un arpégiateur à 15 modes, dont une machine de Turing (TURNG) qui fait tourner et muter une mélodie à partir des notes tenues ; SPICE et DICE font varier les notes de l'arpège et du séquenceur, de la même façon à chaque tour.</li>
+      <li>Un séquenceur pas à pas avec accords et enregistrement, gammes et accords sur les touches, KBD HOLD.</li>
+      <li>Undo et comparaison sur la FM-1, favoris, morph entre deux versions d'un son (MIDI CC 20), randomiseur par section.</li>
+      <li>MPE (bend, pression et slide par note), et MIDI par USB et TRS : pitch bend, molette, expression, pédale de sustain, aftertouch par canal et polyphonique, les quatre macros sur les CC 16 à 19.</li>
+      <li>La FM-1 devient aussi une interface audio USB : enregistre-la directement dans ton ordinateur.</li>
+    </ul>
+    <h2>Le son</h2>
+    <ul>
+      <li>44,1 kHz. Oscillateurs à bande limitée partout : dents de scie et pulses polyBLEP, triangles polyBLAMP, hard sync à bande limitée, FM, feedback et wavefolding tenus sous 20 kHz.</li>
+      <li>Filtres à retour sans délai (ZDF) : un ladder Moog 24 dB qui auto-oscille, des SVF dont la résonance sature en douceur, et sur ANALOG, WAVE et VECTOR huit modèles au choix (SVF, Moog, MS-20, ladder à diodes, SEM, notch, passe-bande, passe-haut).</li>
+      <li>La modulation sur tous les moteurs : une matrice de 12 slots, un 2e et un 3e LFO, une 2e enveloppe qui peut boucler, quatre macros (BRITE, TIMBR, MOTN, SPACE, aussi sur les CC 16 à 19), et le MOD SEQ, un séquenceur de modulation à 4 pistes. VINTAGE donne à chaque voix son petit écart d'accord et de filtre et sa dérive, comme un vrai polyphonique analogique ; SPREAD donne à chaque voix sa place dans la stéréo.</li>
+      <li>Accordages : égal, juste, Pythagore, mésotonique, Werckmeister III, Kirnberger III, les maqams Rast et Bayati, slendro, pelog, 19, 24 et 31-EDO, et toute gamme Scala (.scl) envoyée depuis l'éditeur.</li>
+      <li>Effets : un insert par son (saturation, fuzz, fold, crush, phaser, flanger, chorus, le chorus Juno), distorsion, chorus stéréo, delay synchronisé au tempo (mono, ping-pong, bande), réverbs room, plate, hall et shimmer (d&#39;après Dattorro). Sur le master, un EQ 3 bandes, un compresseur de bus et un limiteur. Presets de niveau égal ; les réglages glissent au lieu de claquer.</li>
+      <li>Un éditeur web pour chaque paramètre : les patchs HYBRID et FMX en entier, le MOD SEQ, les accordages et fichiers .scl, les banques DX7, tes propres tables d'ondes, ta bibliothèque de sons, les sauvegardes.</li>
+    </ul>
+  </section>
+  <section class="about" data-l="ja">
+    <h2>エンジン</h2>
+    <dl class="engines">
+      <div><dt>HYBRID</dt><dd>Clipper のボイス。3 オシレーター（ノコギリ波、パルス、三角波、フィードバック付きサイン、モーフ、7 本のスーパーソウ、FM、ハードシンク、ウェーブフォルダー、ノイズ）、リングモジュレーション、ドリフト、ドライブ。2 フィルター（LP12、LP24、Moog ラダー、BP、HP、ノッチ、ピーク）を直列・並列・スプリットで。ボイスごとに 2 エンベロープとテンポ同期できる 2 LFO、16 スロットのマトリクス、4 つのマクロ。</dd></div>
+      <div><dt>FMX</dt><dd>Korg opsix に着想を得た 6 オペレーター。オペレーターごとに波形（10 種）とモード（PM、リニア FM、リング）、レシオまたは固定周波数、専用エンベロープ。どのオペレーターからどのオペレーターへも量を決めて接続でき、40 のテンプレート、ピッチ・エンベロープ付き。バンクの DX7 音色も演奏できます。</dd></div>
+      <div><dt>FM6</dt><dd>DX7 の 32 アルゴリズムを持つ 6 オペレーター FM。エディタから DX7 のバンク（.syx）を読み込めます。</dd></div>
+      <div><dt>DIGITAL</dt><dd>4 オペレーター FM、8 アルゴリズム：ベル、ベース、エレピ。</dd></div>
+      <div><dt>WAVE</dt><dd>ウェーブテーブル：16 フレームのテーブルが 16 種類（基本波形、PWM、シンク、FM、フォールド、フォルマント、PPG 風スイープ…）。POS、エンベロープ、LFO でモーフィングし、オクターブごとに帯域制限して折り返しなし。エディタから自分のテーブル（Serum 形式の WAV）も読み込めます。</dd></div>
+      <div><dt>WSEQ</dt><dd>Korg Wavestation に着想を得たウェーブ・シーケンス：ノートごとに波形・ピッチ・レベルのステップを曲のテンポで鳴らし、ステップ間はクロスフェード。16 シーケンス。</dd></div>
+      <div><dt>VECTOR</dt><dd>Sequential Prophet VS と Wavestation のジョイスティックに着想を得たベクター合成：正方形の四隅に 4 つの波形、その中の点（X、Y）で混ぜ、点はノートごとに自動で動かすこともできます。</dd></div>
+      <div><dt>JUNO</dt><dd>Juno-6 / 60 / 106 のアイデア：ボイスごとに 1 つの DCO（ノコギリ波、PWM 付きパルス、両方）、サブとノイズ。4 段階のハイパス、24 dB ラダー、ステレオ BBD コーラス I・II・I+II。コーラスはどの音色にもインサート・エフェクトとして使えます。</dd></div>
+      <div><dt>ANALOG</dt><dd>バーチャルアナログ：帯域制限された 2 オシレーター、PWM、ノイズ、ドライブ、8 種類のフィルター・モデル（SVF、Moog ラダー、MS-20、ダイオード・ラダー、SEM、ノッチ、BP、HP）。</dd></div>
+      <div><dt>ACID</dt><dd>303 風ベースライン：ノコギリ波または矩形波を自己発振するラダーへ。フィルター・エンベロープ、アクセント（大きく鋭く、続くアクセントで上がっていくスイープ）、エンベロープを再トリガーしないスライド、ドライブ。</dd></div>
+      <div><dt>STRINGS</dt><dd>70 年代のストリング・マシン：分周の 16'・8'・4' レジスター、3 ラインのアンサンブル・コーラス（ゆっくりしたスイープと速いシマー）、ノコギリ波から矩形波へ、キートラックするフィルター。</dd></div>
+      <div><dt>MACRO</dt><dd>Mutable Instruments Plaits に着想を得た 4 つのマクロ・オシレーター。それぞれ 3 つのノブで：CHORD、SWARM（揺らぐ 8 オシレーター）、ADDITIVE（動くピークの下の 16 倍音）、SPEECH（言葉を話すフォルマント）。ローパス・ゲート付き。</dd></div>
+      <div><dt>PHASE</dt><dd>80 年代の CZ シンセの流れをくむフェイズ・ディストーション。</dd></div>
+      <div><dt>VPS</dt><dd>ベクター・フェイズシェイピング（Kleimola、Lazzarini、Timoney、Välimäki による）：曲げた位相で読むサイン波。フェイズ・ディストーション波形からフォルマント・スイープまで、折り返しなし。</dd></div>
+      <div><dt>TERRAIN</dt><dd>ウェーブ・テレイン合成：8 種類の曲面の上を軌道が回り、その位置と大きさで倍音が決まります。軌道はゆっくり動き、音色が変化し続けます。</dd></div>
+      <div><dt>PHYS</dt><dd>物理モデリング：弦、ベルとバー、ドラムヘッド、共鳴弦（Mutable Instruments Rings と DaisySP より）。</dd></div>
+      <div><dt>TRIO</dt><dd>8 ビット・パソコンの音源チップ：3 オシレーター、リングモジュレーション、シンク、マルチモード・フィルター。</dd></div>
+      <div><dt>LOFI</dt><dd>チップチューン：パルス、三角波、波形メモリ、ピッチスイープ。</dd></div>
+      <div><dt>WHEEL</dt><dd>9 本のドローバーを持つトーンホイール・オルガン。</dd></div>
+      <div><dt>VOICE</dt><dd>フォルマント合成：鍵盤で歌う母音。</dd></div>
+      <div><dt>NOISE</dt><dd>アナログのヒスからシフトレジスターの金属音まで、レゾナンス・フィルターを通して。</dd></div>
+      <div><dt>GRAIN</dt><dd>グラニュラー・クラウド：Clipper 独自に合成した 4 つの素材（コーラス、グラス・ハーモニカ、ノコギリ波アンサンブル、ブレス）。</dd></div>
+      <div><dt>SAMPLE</dt><dd>Clipper の 4 つの素材を楽器として。</dd></div>
+    </dl>
+    <h2>演奏</h2>
+    <ul>
+      <li>8 ボイスのポリフォニー（ビルド・オプションで 12 または 16、プロセッサーの 2 コアで計算）。全エンジンでグライド、ベロシティ、モノ、レガート、ユニゾン、ポリ・ユニゾン（1 音に 2 または 4 ボイス）。</li>
+      <li>2 つの音色をレイヤー、鍵盤をスプリット、または 2 つの MIDI チャンネルで 2 パートとして演奏（MULTI）。</li>
+      <li>15 モードのアルペジエーター。押さえた音からメロディーをループさせ変化させるチューリング・マシン（TURNG）も。SPICE と DICE がアルペジエーターとシーケンサーの音を毎回同じように変化させます。</li>
+      <li>和音と録音に対応したステップシーケンサー、鍵盤上のスケールとコード、KBD HOLD。</li>
+      <li>FM-1 本体でアンドゥと比較、お気に入り、音色の 2 つのバージョン間のモーフィング（MIDI CC 20）、セクション別ランダマイザー。</li>
+      <li>MPE（ノートごとのベンド、プレッシャー、スライド）。USB と TRS の MIDI：ピッチベンド、モジュレーション、エクスプレッション、サスティン、チャンネル／ポリ・アフタータッチ、CC 16〜19 の 4 つのマクロ。</li>
+      <li>FM-1 は USB オーディオ・インターフェースにもなり、そのままパソコンに録音できます。</li>
+    </ul>
+    <h2>サウンド</h2>
+    <ul>
+      <li>44.1 kHz。すべて帯域制限オシレーター：polyBLEP のノコギリ波とパルス、polyBLAMP の三角波、帯域制限ハードシンク、20 kHz 以下に抑えた FM・フィードバック・ウェーブフォールド。</li>
+      <li>ゼロディレイ・フィードバック・フィルター：自己発振する 24 dB Moog ラダー、レゾナンスがやわらかく飽和する SVF。ANALOG、WAVE、VECTOR では 8 種類のモデル（SVF、Moog、MS-20、ダイオード・ラダー、SEM、ノッチ、BP、HP）から選べます。</li>
+      <li>全エンジンでモジュレーション：12 スロットのマトリクス、2 つ目と 3 つ目の LFO、ループもできる 2 つ目のエンベロープ、4 つのマクロ（BRITE、TIMBR、MOTN、SPACE。CC 16〜19 でも）、4 レーンのモジュレーション・シーケンサー MOD SEQ。VINTAGE はボイスごとに少しずつ違うチューニング、フィルター、ドリフトを与え、アナログ・ポリのように鳴らします。SPREAD は各ボイスをステレオの別々の位置に置きます。</li>
+      <li>チューニング：平均律、純正律、ピタゴラス、ミーントーン、ヴェルクマイスター III、キルンベルガー III、マカーム（ラースト、バヤーティー）、スレンドロ、ペロッグ、19・24・31 平均律、そしてエディタから送る Scala（.scl）音階。</li>
+      <li>エフェクト：音色ごとのインサート（ドライブ、ファズ、フォールド、クラッシュ、フェイザー、フランジャー、コーラス、Juno コーラス）、ディストーション、ステレオ・コーラス、テンポ同期ディレイ（モノ、ピンポン、テープ）、ルーム、プレート、ホール、シマー（Dattorro 方式）のリバーブ。マスターに 3 バンド EQ、バス・コンプレッサー、ルックアヘッド・リミッター。音量をそろえたプリセット。設定はクリックせずになめらかに変わります。</li>
+      <li>すべてのパラメーターを編集できるウェブ・エディタ：HYBRID と FMX の音色全体、MOD SEQ、チューニングと .scl、DX7 バンク、自分のウェーブテーブル、音色ライブラリ、バックアップ。</li>
+    </ul>
+  </section>
+  <hr>
+  <p class="small" data-t="direct"></p>
+  <p class="small" data-t="beta"></p>
+  <p class="small"><span data-t="brick"></span>
+    <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener">FM-1-transporter</a></p>
+  <details>
+    <summary data-t="stockTitle"></summary>
+    <p class="small" data-t="stockHelp"></p>
+    <p class="small"><a href="https://www.m-vave.com/download" target="_blank" rel="noopener">www.m-vave.com/download</a></p>
+    <p class="small" data-t="stockBackup"></p>
+    <p><a class="ed" href="../editor/" data-t="stockEditor"></a></p>
+    <p class="small"><label><input id="stock-saved" type="checkbox"> <span data-t="stockSaved"></span></label></p>
+    <p class="small"><label><span data-t="stockFile"></span><br><input id="stock-file" type="file" accept=".fwsc"></label></p>
+    <p><button id="stock-go" disabled data-t="stockGo"></button></p>
+    <p class="small" data-t="back"></p>
+  </details>
+  <p class="small"><b>Clipper</b> by 3dSam (<a href="https://github.com/isod89" target="_blank" rel="noopener">isod89</a>), grown from <a href="https://github.com/isod89/sloop-fm1" target="_blank" rel="noopener">SLOOP</a> and based on <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener">Felucca</a> by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>.
+    FM6: msfa / Dexed (Apache-2.0). PHYS: DaisySP and Mutable Instruments Rings (MIT). Supersaw after Adam Szabo's JP-8000 analysis; ladder after Vadim Zavalishin; plate after Jon Dattorro. JUNO, VECTOR, FMX, WSEQ, MACRO, the filter models and TURNG are Clipper's own code after the ideas of the Roland Juno, the Prophet VS and Wavestation, the Korg opsix, Mutable Instruments Plaits, the MS-20, SEM and diode ladders, Music Thing Modular's Turing Machine, and SPICE / DICE after the Arturia MicroFreak; .scl is the Scala format.
+    Hold OCT− alone while switching on for USB rescue.<br>
+    Font: Terminus (Dimitar Toshkov Zhekov, SIL OFL 1.1).<br>
+    M-VAVE, FM-1 and the other product names above are trademarks of their respective owners; Clipper is not affiliated with them.<br>
+    <span data-t="license"></span> <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener">github.com/hugelton/Felucca</a></p>
+</main>
+<script type="module">
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+//
+// FM-1 .fwsc packages in the browser: the package identity and the image the
+// device reads during an update.
+
+const BLOCKS = 20, BLK = 0x30, KEEP = 0x2F;
+
+// the package identity ("FM-1_904"): one marker byte after each of the first 20 blocks
+function productOf(fwsc) {
+  if (fwsc.length < BLOCKS * BLK) throw new Error("not an FM-1 package (too short)");
+  let s = "";
+  for (let i = 0; i < BLOCKS; i++) {
+    const m = fwsc[i * BLK + KEEP];
+    if (m !== 0x7D) s += String.fromCharCode((m - i - 1) & 0xFF);
+  }
+  return s;
+}
+
+// the image the device addresses during an update: the .fwsc without the 20 marker bytes
+function logicalImage(fwsc) {
+  const out = new Uint8Array(fwsc.length - BLOCKS);
+  for (let i = 0; i < BLOCKS; i++) out.set(fwsc.subarray(i * BLK, i * BLK + KEEP), i * KEEP);
+  out.set(fwsc.subarray(BLOCKS * BLK), BLOCKS * KEEP);
+  return out;
+}
+
+// The official FM-1 V15 (M-VAVE Downloads -> PC Firmware -> FM-1 V15, FM-1.fwsc), for the return to the
+// official firmware: only that exact file is accepted (its SHA-256 pins every byte: the loader, the app, the
+// layout; the name of the file proves nothing). The digest is the one Felucca 1.0 pins.
+const STOCK_V15_SHA256 = "db1642b2b6fa5c2cccb11ffd13878068bb28601678d3644049f99dc40e7edb8a";
+const STOCK_V15_SIZE = 699956;
+const STOCK_V15_PRODUCT = "FM-1_015";
+
+// The official FM-1 V16 (2026-10-21; since then the only one M-VAVE offers): the same checks (after Clipper 1.2:
+// only V15 was accepted, so the way back failed with the file M-VAVE now gives; sloop-fm1 #8). The firmware's own
+// update entry (ota.c) still checks the package's loader (the official one's CRCs) and that its head equals the FM-1's
+const STOCK_V16_SHA256 = "d017fb65e70aca97ee29d944470c3515a74581df5c0576bf70de917c7b2b61d5";
+const STOCK_V16_SIZE = 718196;
+const STOCK_V16_PRODUCT = "FM-1_016";
+// the official FM-1 packages accepted for the way back (the file M-VAVE offers, or the one before)
+const STOCK_FM1 = [
+  { version: "V16", size: STOCK_V16_SIZE, sha256: STOCK_V16_SHA256, product: STOCK_V16_PRODUCT },
+  { version: "V15", size: STOCK_V15_SIZE, sha256: STOCK_V15_SHA256, product: STOCK_V15_PRODUCT },
+];
+// -> the FM-1 package it is (STOCK_FM1), or null
+async function knownStockFm1(bytes) {
+  const c = STOCK_FM1.filter((k) => k.size === bytes.length);
+  if (!c.length) return null;
+  const sha = await sha256hex(bytes);
+  return c.find((k) => k.sha256 === sha && productOf(bytes) === k.product) || null;
+}
+
+async function sha256hex(bytes) {
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function validateStockPackage(bytes) {
+  const k = await knownStockFm1(bytes);
+  if (!k)
+    throw new Error("select the unmodified official FM-1 file (FM-1.fwsc, V16 or V15)");
+  return { product: k.product, version: k.version, image: logicalImage(bytes) };
+}
+
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+//
+// The FM-1 USB-MIDI update protocol (M-UPGRADE compatible) over WebMIDI.
+// Step 1: the running firmware reads parts of the package and stages the update
+// loader. Step 2: the loader reads the whole image and writes it. In both steps
+// the device sends cmd 0x30 read requests on the logical image and we answer.
+
+const HS_QUERY = [0xF0, 0x00, 0x32, 0x45, 0x00, 0x00, 0x00, 0x40, 0x7F, 0xF7];
+const UPGRADE = [0xF0, 0x22, 0x24, 0x35, 0x7F, 0xF7];
+const MAXDATA = 512;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const IS_OTA = (id) => /^ota-/i.test(id.model);
+// the update loader of SLOOP / Felucca packages ("ota-FM-1_9XX"). A device left in the update mode of another
+// firmware (the stock updater's loader) is never written: its loader may lay the image out differently.
+const OUR_LOADER = (id) => /^ota-FM-1_9\d\d$/i.test(id.text);
+// the MIDI ports the installer may probe (never other gear): the FM-1 under Felucca ("Felucca"), under CLIPPER
+// ("Clipper"), under SLOOP or another firmware named after itself ("SLOOP"), the update loaders, and the names
+// Windows / macOS give the stock firmware (after SLOOP 2.6: going from SLOOP to CLIPPER no longer stops at "not found")
+const FM1_PORT = /fm-1|felucca|sloop|clipper|kayo|ota|composite|sinco|usb-midi/i;
+
+// errors carry a code the pages translate: notfound, model, stopped, noloader, lost, noreturn,
+// mismatch (detail: the identity the device reports), badreq, foreign (detail: the loader's identity)
+function fail(code, msg, detail = "") { const e = new Error(msg); e.code = code; e.detail = detail; return e; }
+
+function pack7(data) {
+  const out = []; let acc = 0, nb = 0;
+  for (const b of data) {
+    acc |= b << nb; nb += 8;
+    while (nb >= 7) { out.push(acc & 0x7F); acc >>>= 7; nb -= 7; }
+  }
+  if (nb) out.push(acc & 0x7F);
+  return out;
+}
+
+function unpack7(s) {
+  const out = []; let acc = 0, nb = 0;
+  for (const b of s) {
+    acc |= (b & 0x7F) << nb; nb += 7;
+    while (nb >= 8) { out.push(acc & 0xFF); acc >>>= 8; nb -= 8; }
+  }
+  return out;
+}
+
+function response(addr, data, fl = 0) {
+  const len = data.length;
+  const body = [0x00, 0x59, 0x30, (len + 8) & 0xFF, ((len + 8) >> 8) & 0xFF, 0, fl,
+    addr & 0xFF, (addr >>> 8) & 0xFF, (addr >>> 16) & 0xFF, (addr >>> 24) & 0xFF,
+    len & 0xFF, (len >> 8) & 0xFF, 0, ...data];
+  let s = 0;
+  for (let i = 6; i < body.length; i++) s += body[i];
+  body.push(~s & 0xFF);
+  return [0xF0, ...pack7(body), 0xF7];
+}
+
+function parseRequest(pkt) {
+  if (pkt[0] !== 0xF0 || pkt[pkt.length - 1] !== 0xF7) return null;
+  const u = unpack7(pkt.slice(1, -1));
+  if (u.length !== 15 || u[0] !== 0 || u[1] !== 0x59 || u[2] !== 0x30) return null;
+  let s = 0;
+  for (let i = 6; i < 14; i++) s += u[i];
+  if ((~s & 0xFF) !== u[14]) return null;
+  return { fl: u[6], addr: (u[7] | (u[8] << 8) | (u[9] << 16) | (u[10] << 24)) >>> 0, len: u[11] | (u[12] << 8) | (u[13] << 16) };
+}
+
+function parseIdentity(pkt) {
+  const d = unpack7(pkt.slice(1, -1));
+  if (d.length !== 34 || d[0] !== 0 || d[1] !== 0x59 || d[2] !== 0x11) return null;
+  const txt = String.fromCharCode(...d.slice(6, 33)).replace(/\0+$/, "");
+  const m = /^([^_]+)_(\d+)$/.exec(txt);
+  return m ? { text: txt, model: m[1], version: parseInt(m[2], 10) } : null;
+}
+
+// one MIDI in/out pair with a SysEx queue
+class Link {
+  constructor(input, output) {
+    this.input = input; this.output = output; this.q = []; this.waiter = null;
+    input.onmidimessage = (ev) => {
+      if (ev.data[0] !== 0xF0) return;
+      this.q.push(Array.from(ev.data));
+      if (this.waiter) { const w = this.waiter; this.waiter = null; w(); }
+    };
+  }
+  get lost() { return this.input.state === "disconnected" || this.output.state === "disconnected"; }
+  // false when the port is gone (unplugged): WebMIDI throws on a disconnected output
+  send(bytes) {
+    try { this.output.send(bytes); return true; } catch (_) { return false; }
+  }
+  drain() { this.q.length = 0; }
+  async read(ms) {
+    if (!this.q.length) {
+      let tm;
+      await Promise.race([new Promise((r) => { this.waiter = r; }), new Promise((r) => { tm = setTimeout(r, ms); })]);
+      clearTimeout(tm);
+      this.waiter = null;
+    }
+    return this.q.shift() || null;
+  }
+  close() { this.input.onmidimessage = null; }
+}
+
+async function handshake(link, tries = 3) {
+  link.drain();
+  for (let t = 0; t < tries; t++) {
+    if (!link.send(HS_QUERY)) return null;
+    const end = Date.now() + 1000;
+    while (Date.now() < end) {
+      const p = await link.read(end - Date.now());
+      if (!p) break;
+      const id = parseIdentity(p);
+      if (id) return id;
+    }
+  }
+  return null;
+}
+
+class Updater {
+  constructor(access, log) {
+    this.access = access;
+    this.log = log || (() => {});
+  }
+
+  // every in/out pair with the same port name that answers the handshake
+  async find(filter) {
+    const outs = [...this.access.outputs.values()];
+    for (const input of this.access.inputs.values()) {
+      if (input.state === "disconnected") continue;
+      if (!FM1_PORT.test(input.name || "")) continue;   // never probe other gear
+      const output = outs.find((o) => o.name === input.name) || (outs.length === 1 ? outs[0] : null);
+      if (!output) continue;
+      try { await input.open(); await output.open(); } catch (_) { continue; }
+      const link = new Link(input, output);
+      const id = await handshake(link, 2);
+      if (id && (!filter || filter(id))) return { link, id, name: input.name };
+      link.close();
+    }
+    return null;
+  }
+
+  // the MIDI inputs there are, for the "not found" message: " (MIDI: a, b)" (a port the installer skipped shows)
+  seen() {
+    const names = [...this.access.inputs.values()].filter((p) => p.state !== "disconnected").map((p) => p.name || "?");
+    return names.length ? ` (MIDI: ${names.join(", ")})` : " (MIDI: none)";
+  }
+
+  async waitFor(filter, ms) {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      const dev = await this.find(filter);
+      if (dev) return dev;
+      await sleep(1000);
+    }
+    return null;
+  }
+
+  // serve read requests until the device asks for one of the finish addresses; stops early
+  // when the port disappears (lost: true) instead of waiting out idleMs
+  async serve(link, image, finishAddr, idleMs, onProgress) {
+    let served = 0, last = Date.now();
+    for (;;) {
+      const pkt = await link.read(1000);
+      if (!pkt) {
+        if (link.lost) return { served, finished: false, lost: true };
+        if (Date.now() - last > idleMs) return { served, finished: false };
+        continue;
+      }
+      const r = parseRequest(pkt);
+      if (!r) continue;
+      last = Date.now();
+      if (r.addr === 0xE0000000 || r.addr === 0xF0000000) {
+        link.send(response(r.addr, [...new TextEncoder().encode("success"), 0]));
+        if (r.addr === finishAddr) return { served, finished: true };
+        continue;
+      }
+      if (r.len > MAXDATA || r.addr + r.len > image.length) throw fail("badreq", `bad request ${r.addr.toString(16)}+${r.len}`);
+      await sleep(10);
+      if (!link.send(response(r.addr, Array.from(image.subarray(r.addr, r.addr + r.len)), r.fl))) {
+        return { served, finished: false, lost: true };
+      }
+      served++;
+      if (onProgress) onProgress(served, r.addr);
+    }
+  }
+
+  // full install: running firmware -> loader -> new firmware
+  async install(image, product, onStep) {
+    const step = onStep || (() => {});
+    const dev = await this.find((id) => !IS_OTA(id));
+    if (!dev) throw fail("notfound", "FM-1 not found (USB cable, and no other app using it?)", this.seen());
+    const [model] = product.split("_");
+    if (dev.id.model !== model) { dev.link.close(); throw fail("model", `the device is ${dev.id.text}, the package is for ${product}`); }
+    step("start", dev.id.text);
+    dev.link.send(UPGRADE);
+    await sleep(2000);
+    const s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n) => step("verify", n));
+    dev.link.close();
+    if (!s1.finished) throw fail(s1.lost ? "lost" : "stopped", `the device ${s1.lost ? "was disconnected" : "stopped"} after ${s1.served} requests: nothing was written`);
+    step("loader");
+    await sleep(3000);
+    const ota = await this.waitFor(IS_OTA, 30000);
+    if (!ota) throw fail("noloader", "the update loader did not appear. Replug the USB cable and press Install again: the device stays in update mode until it is finished.");
+    const s2 = await this.write(ota, image, step);
+    if (!s2.finished) throw fail(s2.lost ? "lost" : "stopped", `the loader ${s2.lost ? "was disconnected" : "stopped"} after ${s2.served} requests. Replug and press Install again to resume.`);
+    step("reboot");
+    await sleep(3000);
+    const back = await this.waitFor((id) => !IS_OTA(id), 40000);
+    if (!back) throw fail("noreturn", "the device did not come back: power-cycle it");
+    back.link.close();
+    if (back.id.text !== product) throw fail("mismatch", `installed, but the device reports ${back.id.text}`, back.id.text);
+    step("done", back.id.text);
+    return back.id.text;
+  }
+
+  // step 2 with the loader found by find()/waitFor()
+  async write(ota, image, step) {
+    ota.link.send(UPGRADE);
+    await sleep(2000);
+    const s2 = await this.serve(ota.link, image, 0xF0000000, 180000, (n) => step("write", n));
+    ota.link.close();
+    return s2;
+  }
+
+  // resume: the device is already in update mode (loader) -> true when the write finished. Only SLOOP's
+  // own loader is resumed, except for the return to the official firmware (opts.product: the official
+  // package, its identity checked once the FM-1 is back, after Felucca 1.0): that one is the official
+  // loader's own image, as M-UPGRADE would write it
+  async resume(image, onStep, opts = {}) {
+    const ota = await this.find(IS_OTA);
+    if (!ota) return false;
+    if (!OUR_LOADER(ota.id) && !opts.product) {
+      ota.link.close();
+      throw fail("foreign", `the FM-1 is in the update mode of another firmware (${ota.id.text}): finish that update with its own updater`, ota.id.text);
+    }
+    const step = onStep || (() => {});
+    if (!(await this.write(ota, image, step)).finished) return false;
+    if (opts.product) {
+      step("reboot");
+      await sleep(3000);
+      const back = await this.waitFor((id) => !IS_OTA(id), 40000);
+      if (!back) throw fail("noreturn", "the FM-1 did not come back after the write: power-cycle it");
+      back.link.close();
+      if (back.id.text !== opts.product) throw fail("mismatch", `written, but the FM-1 reports ${back.id.text}`, back.id.text);
+      step("done", back.id.text);
+    }
+    return true;
+  }
+}
+
+const $ = (id) => document.getElementById(id);
+const TEXT = {
+  ja: {
+    kicker: "M-VAVE FM-1 のためのシンセサイザー・ファームウェア",
+    expTitle: "CLIPPER 1.3",
+    expText: "Clipper 1.3 は FM-1 本体でテスト済みです。インストール前にエディタでバックアップを取り、気づいたことを知らせてください。",
+    tEng: "音源エンジン", tSnd: "音色、レベル調整済み", tHy: "フィルター・モデル", tMx: "チューニング＋自分の Scala 音階",
+    intro: "FM-1 を USB で接続してください。（Chrome か Edge で使えます）",
+    warn: "書き込み中は USB を抜かないでください。",
+    install: "インストール", other: "English",
+    editor: "エディタ（インストール後、パソコンから音色やシーケンスを編集）",
+    edOffline: "エディタをダウンロード（パソコンでインターネットなしで使う：ファイルを Chrome / Edge で開く）",
+    appInstall: "アプリとしてインストール（エディタとインストーラーがオフラインで使える・Android も）",
+    direct: "USB ケーブルはパソコンに直接つないでください。Probe や Transporter などの機材は不要です。",
+    brick: "万一インストールに失敗して起動しなくなった場合は、復旧に Transporter が必要です:",
+    beta: "これは無保証のカスタムファームウェアです。このファームウェアを使ったことで FM-1 が壊れたり不具合が起きたりしても、作者は一切の責任を負いません。自己責任でお使いください。",
+    nomidi: "このブラウザでは使えません。Chrome か Edge で開いてください。", loadfail: "読み込めませんでした: ",
+    start: "開始します", verify: "確認中", loader: "書き込みモードに切り替え中", write: "書き込み中",
+    reboot: "再起動中", done: "完了しました", stopped: "途中で止まりました。USB を挿し直してもう一度押してください。",
+    error: "エラー: ",
+    denied: "MIDI（SysEx）の使用が許可されませんでした。アドレスバーのサイト設定で MIDI を許可して、もう一度押してください。",
+    notfound: "FM-1 が見つかりません。USB ケーブル（データ通信用か）を確かめ、MIDI を使う他のアプリを閉じてから、もう一度押してください。",
+    model: "接続されている機器は FM-1 ではありません。",
+    lost: "USB の接続が切れました。挿し直してもう一度押してください。",
+    noloader: "書き込みモードの FM-1 が見つかりません。USB を挿し直してもう一度押してください（終わるまで書き込みモードのままです）。",
+    noreturn: "FM-1 が戻ってきません。電源を入れ直してください。",
+    mismatch: "書き込みは終わりましたが、FM-1 が別のバージョンを報告しています: ",
+    foreign: "FM-1 は別のファームウェアの書き込みモードです。そのアップデーター（M-UPGRADE）で書き込みを終えてから、もう一度インストールしてください: ",
+    badpkg: "インストールするファイルが壊れています。ページを再読み込みしてください。",
+    leave: "書き込み中です。ページを閉じないでください。",
+    license: "GPL-3.0、無保証。ソース:",
+    stockTitle: "公式ファームウェアに戻す",
+    stockHelp: "M-VAVE のサイトから公式の FM-1 ファームウェア（V16、または V15）をダウンロードし、中の FM-1.fwsc（変更していないもの）を選んでください。ファイルはこのブラウザの中で確認され、どこにも送られません。",
+    stockBackup: "公式ファームウェアは Clipper の音色・プリセット・ウェーブテーブルを開けません。先にエディタでバックアップを保存してください（Backup タブ）。Clipper を入れ直せば、エディタから復元できます。",
+    stockEditor: "エディタを開いてバックアップする", stockSaved: "バックアップをパソコンに保存しました",
+    stockFile: "公式の FM-1.fwsc", stockGo: "公式ファームウェアをインストール",
+    stockValid: "公式ファームウェアを確認しました", stockBad: "公式ファームウェア（V16 / V15）ではありません: ",
+    stockConfirm: "FM-1 に公式ファームウェアをインストールします。Clipper の曲は公式ファームウェアでは開けません。バックアップは保存しましたか？",
+    stockFinish: "FM-1 は Clipper の書き込みモードです。先に「インストール」で Clipper の書き込みを終えてから、公式ファームウェアに戻してください。",
+    back: "M-VAVE のアップデーター M-UPGRADE（Downloads → PC Software）でも戻せます。FM-1 が見つからない場合は、MIDI を使う他のアプリとブラウザのタブを閉じてください。",
+  },
+  en: {
+    kicker: "Synthesizer firmware for the M-VAVE FM-1",
+    expTitle: "CLIPPER 1.3",
+    expText: "Clipper 1.3 has been tested on the FM-1. Make a backup with the editor before installing, and please report what you find.",
+    tEng: "synthesis engines", tSnd: "sounds, level-matched", tHy: "filter models", tMx: "tunings + your own Scala scales",
+    intro: "Connect the FM-1 by USB. (Works in Chrome or Edge.)",
+    warn: "Do not unplug the USB cable while writing.",
+    install: "Install", other: "français",
+    editor: "Editor (after installing: edit sounds and sequences from the computer)",
+    edOffline: "Download the editor to use it without internet on a computer (open the file in Chrome or Edge)",
+    appInstall: "Install the app (the editor and the installer offline, Android too)",
+    direct: "Connect the USB cable directly to the computer. No probe or Transporter is needed.",
+    brick: "If an install fails and the FM-1 no longer starts, recovering it needs a Transporter:",
+    beta: "This is custom firmware with no warranty. The author accepts no responsibility if your FM-1 is damaged or misbehaves because of it. Use it at your own risk.",
+    nomidi: "This browser cannot do it. Open the page in Chrome or Edge.", loadfail: "Could not load: ",
+    start: "Starting", verify: "Verifying", loader: "Switching to update mode", write: "Writing",
+    reboot: "Restarting", done: "Done", stopped: "Stopped. Replug the USB cable and press Install again.",
+    error: "Error: ",
+    denied: "MIDI (SysEx) access was not allowed. Allow MIDI in the site settings (address bar) and press Install again.",
+    notfound: "FM-1 not found. Check the USB cable (a data cable), close other apps that use MIDI, and press Install again.",
+    model: "The connected device is not an FM-1.",
+    lost: "The USB connection was lost. Replug it and press Install again.",
+    noloader: "The FM-1 in update mode was not found. Replug the USB cable and press Install again (it stays in update mode until it is finished).",
+    noreturn: "The FM-1 did not come back. Power-cycle it.",
+    mismatch: "Written, but the FM-1 reports another version: ",
+    foreign: "The FM-1 is in the update mode of another firmware. Finish that update with its own updater (M-UPGRADE), then press Install again: ",
+    badpkg: "The file to install is damaged. Reload the page.",
+    leave: "Writing. Do not close the page.",
+    license: "GPL-3.0, no warranty. Source:",
+    stockTitle: "Return to the official firmware",
+    stockHelp: "Download the official FM-1 firmware (V16, or V15) from M-VAVE and select the FM-1.fwsc inside it, unmodified. The file is checked in this browser; it is not sent anywhere.",
+    stockBackup: "The official firmware cannot open Clipper's sounds, presets or wavetables. Save a backup with the editor first (the Backup tab); reinstall Clipper and restore it from the editor whenever you want them back.",
+    stockEditor: "Open the editor to back up", stockSaved: "I saved a backup on this computer",
+    stockFile: "The official FM-1.fwsc", stockGo: "Install the official firmware",
+    stockValid: "Official firmware verified", stockBad: "Not the official firmware (V16 / V15): ",
+    stockConfirm: "Install the official firmware on the FM-1? The official firmware cannot open Clipper's music. Did you save a backup?",
+    stockFinish: "The FM-1 is in Clipper's update mode. Press Install to finish the Clipper update first, then return to the official firmware.",
+    back: "M-VAVE's own updater, M-UPGRADE (Downloads → PC Software), works too. If it does not find the FM-1, close every other app and browser tab that uses MIDI.",
+  },
+  fr: {
+    kicker: "Firmware synthétiseur pour la M-VAVE FM-1",
+    expTitle: "CLIPPER 1.3",
+    expText: "Clipper 1.3 a été testé sur la FM-1. Fais une sauvegarde avec l'éditeur avant d'installer, et signale ce que tu trouves.",
+    tEng: "moteurs de synthèse", tSnd: "sons, niveaux égalisés", tHy: "modèles de filtre", tMx: "accordages + tes gammes Scala",
+    intro: "Branche la FM-1 en USB. (Fonctionne dans Chrome ou Edge.)",
+    warn: "Ne débranche pas le câble USB pendant l'écriture.",
+    install: "Installer", other: "日本語",
+    editor: "Éditeur (après l'installation : édite les sons et les séquences depuis l'ordinateur)",
+    edOffline: "Télécharger l'éditeur pour l'utiliser sans internet sur un ordinateur (ouvre le fichier dans Chrome ou Edge)",
+    appInstall: "Installer l'app (l'éditeur et l'installateur hors ligne, Android aussi)",
+    direct: "Branche le câble USB directement sur l'ordinateur. Aucune sonde ni Transporter n'est nécessaire.",
+    brick: "Si une installation échoue et que la FM-1 ne démarre plus, il faut un Transporter pour la récupérer :",
+    beta: "C'est un firmware personnalisé sans garantie. L'auteur décline toute responsabilité si ta FM-1 est endommagée ou fonctionne mal à cause de lui. Utilise-le à tes risques.",
+    nomidi: "Ce navigateur ne peut pas le faire. Ouvre la page dans Chrome ou Edge.", loadfail: "Chargement impossible : ",
+    start: "Démarrage", verify: "Vérification", loader: "Passage en mode mise à jour", write: "Écriture",
+    reboot: "Redémarrage", done: "Terminé", stopped: "Arrêté. Rebranche le câble USB et appuie de nouveau sur Installer.",
+    error: "Erreur : ",
+    denied: "L'accès MIDI (SysEx) a été refusé. Autorise le MIDI dans les paramètres du site (barre d'adresse) et appuie de nouveau sur Installer.",
+    notfound: "FM-1 introuvable. Vérifie le câble USB (un câble de données), ferme les autres applis qui utilisent le MIDI, et appuie de nouveau sur Installer.",
+    model: "L'appareil branché n'est pas une FM-1.",
+    lost: "La connexion USB a été perdue. Rebranche-la et appuie de nouveau sur Installer.",
+    noloader: "La FM-1 en mode mise à jour est introuvable. Rebranche le câble USB et appuie de nouveau sur Installer (elle reste en mode mise à jour jusqu'à la fin).",
+    noreturn: "La FM-1 n'est pas revenue. Éteins-la et rallume-la.",
+    mismatch: "Écrit, mais la FM-1 annonce une autre version : ",
+    foreign: "La FM-1 est en mode mise à jour d'un autre firmware. Termine cette mise à jour avec son propre outil (M-UPGRADE), puis appuie de nouveau sur Installer : ",
+    badpkg: "Le fichier à installer est endommagé. Recharge la page.",
+    leave: "Écriture en cours. Ne ferme pas la page.",
+    license: "GPL-3.0, sans garantie. Source :",
+    stockTitle: "Revenir au firmware officiel",
+    stockHelp: "Télécharge le firmware officiel de la FM-1 (V16, ou V15) sur le site de M-VAVE et choisis le FM-1.fwsc qu'elle contient, sans le modifier. Le fichier est vérifié dans ce navigateur ; il n'est envoyé nulle part.",
+    stockBackup: "Le firmware officiel ne peut pas ouvrir les sons, les presets ni les tables d'ondes de Clipper. Fais d'abord une sauvegarde avec l'éditeur (onglet Backup) ; réinstalle Clipper et restaure-la depuis l'éditeur quand tu veux les retrouver.",
+    stockEditor: "Ouvrir l'éditeur pour sauvegarder", stockSaved: "J'ai enregistré une sauvegarde sur cet ordinateur",
+    stockFile: "Le FM-1.fwsc officiel", stockGo: "Installer le firmware officiel",
+    stockValid: "Firmware officiel vérifié", stockBad: "Ce n'est pas le firmware officiel (V16 / V15) : ",
+    stockConfirm: "Installer le firmware officiel sur la FM-1 ? Le firmware officiel ne peut pas ouvrir la musique de Clipper. As-tu fait une sauvegarde ?",
+    stockFinish: "La FM-1 est en mode mise à jour de Clipper. Appuie d'abord sur Installer pour terminer la mise à jour de Clipper, puis reviens au firmware officiel.",
+    back: "L'outil de M-VAVE, M-UPGRADE (Downloads → PC Software), fonctionne aussi. S'il ne trouve pas la FM-1, ferme toutes les autres applis et onglets qui utilisent le MIDI.",
+  },
+};
+let lang = "en";                                     /* English first; the button switches, and the choice is remembered */
+try { const v = localStorage.getItem("clipper-installer-lang"); if (["en", "fr", "ja"].includes(v)) lang = v; } catch (e) { /* no storage */ }
+const NEXT = { en: "fr", fr: "ja", ja: "en" };
+const t = (k) => TEXT[lang][k];
+let lastKey = null, lastArg = "";
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach((e) => { e.textContent = t(e.dataset.t); });
+  document.querySelectorAll("[data-l]").forEach((e) => { e.hidden = e.dataset.l !== lang; });
+  $("lang").textContent = t("other");
+  if (lastKey) $("status").textContent = t(lastKey) + lastArg;
+}
+$("lang").addEventListener("click", () => {
+  lang = NEXT[lang];
+  try { localStorage.setItem("clipper-installer-lang", lang); } catch (e) { /* no storage */ }
+  applyLang();
+});
+applyLang();
+/* (1.1, after SLOOP 2.6) the site without internet (webapp/sw.js): opened once online, the installer, the firmware and
+ * the editor work offline too, still on https (Android: a downloaded file opens as content://, where Chrome refuses MIDI) */
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
+  navigator.serviceWorker.register("../sw.js").catch(() => {});
+{
+  let ask = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); ask = e; $("app").hidden = false; });
+  window.addEventListener("appinstalled", () => { ask = null; $("app").hidden = true; });
+  $("app").addEventListener("click", async () => {
+    if (!ask) return;
+    ask.prompt();
+    await ask.userChoice.catch(() => {});
+    ask = null;
+    $("app").hidden = true;
+  });
+}
+const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textContent = t(k) + arg; };
+const say = (txt) => { lastKey = null; $("status").textContent = txt; };
+const log = (t) => { $("log").textContent += t + "\n"; };
+let image = null;
+const meta = {"version": "1.3", "product": "FM-1_900", "pkg": "../../firmware/clipper-1.3.fwsc", "sha256": "cb976dff03c73032d1265be2a925bf0ec703565096c03aba3c72a818ab4628f1"};
+
+let writing = false, stock = null;
+const lockAll = (on) => {
+  writing = on;
+  $("go").disabled = on || !image;
+  $("stock-go").disabled = on || !stock || !$("stock-saved").checked;
+  $("stock-file").disabled = on;
+};
+window.addEventListener("beforeunload", (e) => { if (writing) { e.preventDefault(); e.returnValue = t("leave"); } });
+
+(async () => {
+  if (!navigator.requestMIDIAccess) { sayK("nomidi"); return; }
+  try {
+    const r = await fetch(meta.pkg);
+    if (!r.ok) throw new Error(`${meta.pkg}: HTTP ${r.status}`);
+    const pkg = new Uint8Array(await r.arrayBuffer());
+    if (productOf(pkg) !== meta.product) { sayK("badpkg"); return; }
+    if (meta.sha256 && self.crypto && crypto.subtle) {   /* a damaged download is never offered (the loader checks its CRC too) */
+      const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", pkg))].map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (h !== meta.sha256) { sayK("badpkg"); log(`sha256 ${h}, expected ${meta.sha256}`); return; }
+    }
+    image = logicalImage(pkg);
+    say(`Clipper ${meta.version}`);
+    lockAll(writing);
+  } catch (e) { sayK("loadfail", e.message); }
+})();
+
+const total = 74 + 1179;                           /* reads: step 1, step 2 (head + app area, SLOOP 2.0 loader) */
+const step = (k, a) => {
+  log(`${k} ${a ?? ""}`);
+  if (k === "start") sayK("start");
+  if (k === "verify") { sayK("verify"); $("bar").value = Math.min(100, (a / total) * 100); }
+  if (k === "loader") sayK("loader");
+  if (k === "write") { sayK("write"); $("bar").value = Math.min(100, ((74 + a) / total) * 100); }
+  if (k === "reboot") sayK("reboot");
+  if (k === "done") { $("bar").value = 100; sayK("done"); }
+};
+const failed = (e) => {
+  if (e && e.code && TEXT[lang][e.code]) sayK(e.code, e.detail || "");
+  else sayK("error", e && e.message);
+  log(String(e && e.stack || e));
+};
+
+$("go").addEventListener("click", async () => {
+  if (writing) return;
+  lockAll(true);
+  let midi;
+  try { midi = await navigator.requestMIDIAccess({ sysex: true }); }
+  catch (e) { sayK("denied"); lockAll(false); return; }
+  try {
+    const up = new Updater(midi, log);
+    const ota = await up.find((id) => /^ota-/i.test(id.model));
+    if (ota) {
+      ota.link.close();
+      sayK((await up.resume(image, step)) ? "done" : "stopped");
+    } else {
+      await up.install(image, meta.product, step);
+    }
+  } catch (e) { failed(e); }
+  lockAll(false);
+});
+
+/* back to the official firmware, V16 or V15 (after Felucca 1.0; V16 after 1.2): only the exact official files, a backup first (the editor),
+   through the same update path as M-UPGRADE; a device left in the official updater's mode is finished */
+$("stock-saved").addEventListener("change", () => lockAll(writing));
+$("stock-file").addEventListener("change", async () => {
+  const f = $("stock-file").files[0];
+  stock = null;
+  lockAll(writing);
+  if (!f) return;
+  try { stock = await validateStockPackage(new Uint8Array(await f.arrayBuffer())); sayK("stockValid"); }
+  catch (e) { sayK("stockBad", e.message); }
+  lockAll(writing);
+});
+$("stock-go").addEventListener("click", async () => {
+  if (writing || !stock || !$("stock-saved").checked || !confirm(t("stockConfirm"))) return;
+  lockAll(true);
+  let midi;
+  try { midi = await navigator.requestMIDIAccess({ sysex: true }); }
+  catch (e) { sayK("denied"); lockAll(false); return; }
+  try {
+    const up = new Updater(midi, log);
+    const ota = await up.find((id) => /^ota-/i.test(id.model));
+    if (ota) {
+      ota.link.close();
+      if (OUR_LOADER(ota.id)) sayK("stockFinish");    /* Clipper's loader: finish Clipper first (Install) */
+      else sayK((await up.resume(stock.image, step, { product: stock.product })) ? "done" : "stopped");
+    } else {
+      await up.install(stock.image, stock.product, step);
+    }
+  } catch (e) { failed(e); }
+  lockAll(false);
+});
+</script>
+</body>
+</html>
