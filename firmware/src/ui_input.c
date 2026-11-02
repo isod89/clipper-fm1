@@ -502,7 +502,7 @@ UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
     if (pg->graph == GR_BROWSE) {                         /* KNOB 1: one preset, KNOB 2: the engine filter (1.0) */
         if (slot == 0u && !is_drum(TSEL)) {
             br_step(steps);
-        } else if (slot == 1u && !is_drum(TSEL)) {
+        } else if (slot == 1u && !is_drum(TSEL) && !br_favs()) {   /* (1.4: FAVS has no filter) */
             br_filter_step(steps > 0 ? 1 : -1);
         } else if (slot == 3u && !is_drum(TSEL)) {          /* (0.7) KNOB 4: FAV, right adds the sound, left removes it */
             fav_toggle(steps > 0);
@@ -1188,8 +1188,11 @@ UI_SMALL static void ui_input(void)
             TDRUM->p[P_E0] = (int16_t)clamp(TDRUM->p[P_E0] + s, 0, DRUM_KITS - 1);
         else if (!ui.home && cur_page()->graph == GR_BROWSE)
             br_step(s);                                 /* (1.0: the PRESETS page: its engine filter) */
-        else if (total)
-            preset_go((uint32_t)(((int32_t)cur + s % (int32_t)total + (int32_t)total) % (int32_t)total));
+        else {                                          /* (1.4: the sounds, not the FAV rows: FAVS has them) */
+            uint32_t b[FAV_N], nf = fav_list(b), m = total - nf;
+            if (m)
+                preset_go(nf + (uint32_t)(((int32_t)(cur - nf) + s % (int32_t)m + (int32_t)m) % (int32_t)m));
+        }
     }
 #if CLIPPER_SYNTH
     if ((s = panel_enc(EN_ALGO)) != 0 && (ui.home || cur_page()->graph == GR_BROWSE))

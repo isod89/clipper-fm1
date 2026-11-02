@@ -852,7 +852,6 @@ UI_SMALL static const char *base_kind(uint32_t n) { return n < NBANK ? BANK_KIND
 #define FAV_USER 0x8000u
 static uint16_t fav[FAV_N] = {FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE,
                               FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE};
-static int8_t fav_at = -1;                           /* the favourite the selected part's sound was loaded from */
 UI_SMALL static uint32_t fav_list(uint32_t *b)                /* the favourites as base list indices, in order */
 {
     uint32_t i, n = 0;
@@ -916,20 +915,28 @@ UI_SMALL static void fav_toggle(int add)                      /* KNOB 4 on the P
         for (; i + 1u < FAV_N; i++)                  /* (the order kept) */
             fav[i] = fav[i + 1u];
         fav[FAV_N - 1u] = FAV_NONE;
-        fav_at = -1;
         ui_message("FAV REMOVED");
     }
     settings_later = 1;                              /* (project.c: the side record goes with the settings) */
     ui.force = 1;
 }
 
-/* the PRESETS list: the favourites, then every factory sound by kind, then the user presets */
+/* 1.4: SAVE > FAVS, the PRESETS browser on the favourites only (between USER and TOOLS; KNOB 2 has no filter there) */
+UI_SMALL static int br_favs(void)
+{
+    return !ui.home && cur_page()->graph == GR_BROWSE && str_eq(cur_page()->title, "FAVS");
+}
+
+/* the list: the favourites, then every factory sound by kind, then the user presets (1.4: the FAV rows on FAVS only,
+ * elsewhere the sound is at its place in its kind) */
 UI_SMALL static uint32_t preset_pos(uint32_t *total)
 {
-    uint32_t b[FAV_N], nf = fav_list(b), cur = base_pos(total);
+    uint32_t b[FAV_N], nf = fav_list(b), cur = base_pos(total), i;
     *total += nf;
-    if (fav_at >= 0 && (uint32_t)fav_at < nf && b[fav_at] == cur)
-        return (uint32_t)fav_at;
+    if (br_favs())                                   /* (1.4: on FAVS, a favourite is its FAV row) */
+        for (i = 0; i < nf; i++)
+            if (b[i] == cur)
+                return i;
     return nf + cur;
 }
 UI_SMALL static uint32_t preset_at(uint32_t n, uint32_t *k)
@@ -940,15 +947,26 @@ UI_SMALL static uint32_t preset_at(uint32_t n, uint32_t *k)
 UI_SMALL static const char *preset_kind(uint32_t n)
 {
     uint32_t b[FAV_N], nf = fav_list(b);
+    if (n < nf && br_favs())                         /* (1.4: on FAVS every row is one: its kind instead) */
+        return base_kind(b[n]);
     return n < nf ? "FAV" : base_kind(n - nf);
+}
+UI_SMALL static int preset_fav(uint32_t n)                    /* a favourite: a FAV row, or the same sound in its kind */
+{
+    uint32_t b[FAV_N], nf = fav_list(b), i;
+    if (n < nf)
+        return 1;
+    for (i = 0; i < nf; i++)
+        if (b[i] == n - nf)
+            return 1;
+    return 0;
 }
 
 UI_SMALL static void preset_go(uint32_t n)                    /* load list index n into the selected track */
 {
-    uint32_t k, e = preset_at(n, &k), b[FAV_N];
+    uint32_t k, e = preset_at(n, &k);
     if (is_drum(TSEL))
         return;                                      /* one GM kit: nothing to browse */
-    fav_at = (int8_t)(n < fav_list(b) ? (int32_t)n : -1);
     if (e == NENGINES) {
         up_load(k);
         return;
@@ -962,21 +980,28 @@ UI_SMALL static void preset_go(uint32_t n)                    /* load list index
 /* 1.0 (a comment: "KNOB 2 just jumps to a preset of that engine, the list is not filtered"): the PRESETS page's
  * engine filter. KNOB 2 picks ALL, one engine (those with sounds in the list) or USER (the user presets); then KNOB 1,
  * the PRESETS knob on that page and the list shown go through that engine's sounds only, in the list's order (the
- * favourites, their own copies, are left out of a filter). HOME's PRESETS knob always browses the whole list */
+ * favourites, their own copies, are left out of a filter; 1.4: out of the whole list too, FAVS has them) */
 #define BR_ALL 0xFFu
 static uint8_t br_eng = BR_ALL;
 UI_SMALL static int br_match(uint32_t n, uint32_t nf)         /* entry n of the list (nf favourites first) is in the filter */
 {
     uint32_t k;
-    if (br_eng == BR_ALL)
-        return 1;
-    return n >= nf && preset_at(n, &k) == br_eng;
+    if (br_favs())                                   /* (1.4) SAVE > FAVS: the favourites only */
+        return n < nf;
+    if (n < nf)                                      /* (1.4) PRESETS: no FAV rows, each favourite in its kind (orange) */
+        return 0;
+    return br_eng == BR_ALL || preset_at(n, &k) == br_eng;
 }
 /* the filtered list: how many, and where the sound now is in it (*pos; when it is not in it: 0) */
 UI_SMALL static uint32_t br_count(uint32_t *pos)
 {
     uint32_t total, cur = preset_pos(&total), b[FAV_N], nf = fav_list(b), n, c = 0;
     *pos = 0;
+    if (br_favs()) {                                 /* (1.4) FAVS: the first nf entries, no walk through the list */
+        if (cur < nf)
+            *pos = cur;
+        return nf;
+    }
     for (n = 0; n < total; n++)
         if (br_match(n, nf)) {
             if (n == cur)
@@ -1051,21 +1076,21 @@ UI_SMALL static uint32_t kind_at(uint32_t n)                  /* (0.7: the favou
 }
 UI_SMALL static void preset_kind_jump(int32_t s)
 {
-    uint32_t total, cur = preset_pos(&total), n = cur, k;
-    if (is_drum(TSEL) || total < 2u)
+    uint32_t total, cur = preset_pos(&total), n = cur, k, b[FAV_N], nf = fav_list(b);
+    if (is_drum(TSEL) || total < nf + 2u || br_favs())   /* (1.4: not on FAVS; the FAV rows are not a kind any more) */
         return;
-    while (n && kind_at(n - 1u) == kind_at(cur))        /* the start of the kind shown */
+    while (n > nf && kind_at(n - 1u) == kind_at(cur))   /* the start of the kind shown */
         n--;
     if (s > 0) {
         k = kind_at(cur);
         while (n < total && kind_at(n) == k)
             n++;
         if (n >= total)
-            n = 0;
+            n = nf;
     } else {
-        n = n ? n - 1u : total - 1u;                   /* into the kind before, then to its start */
+        n = n > nf ? n - 1u : total - 1u;              /* into the kind before, then to its start */
         k = kind_at(n);
-        while (n && kind_at(n - 1u) == k)
+        while (n > nf && kind_at(n - 1u) == k)
             n--;
     }
     preset_go(n);

@@ -448,7 +448,7 @@ UI_SMALL static uint32_t graph_signature(void)
         uint32_t q;
         for (q = 0; q < FAV_N; q++)
             h = h * 31u + fav[q];
-        h ^= (uint32_t)(fav_at + 1) * 2654435761u + br_eng * 40503u;
+        h ^= br_eng * 40503u;
     }
     if (pg->graph == GR_SLCR && t->p[P_SLCR])        /* the SLICER's step playing */
         h ^= (sl[song.sel].idx + 1u) * 2654435761u;
@@ -469,6 +469,12 @@ UI_SMALL static void graph_browse(void)
 {
     uint32_t total, cur = preset_pos(&total), e, k, pos, cnt = br_count(&pos), first = cur;
     int32_t row, r0 = -3, r1 = 3;
+    if (br_favs() && (!total || !cnt)) {             /* (1.4) FAVS, empty: how to add one */
+        cv_text(14, 38, &FONT_S, "NO FAVOURITES YET", C_GRAY);
+        cv_text(14, 72, &FONT_S, "ON PRESETS, TURN", C_DIM);
+        cv_text(14, 89, &FONT_S, "KNOB 4 RIGHT", C_DIM);
+        return;
+    }
     if (!total || !cnt)
         return;
     if (cnt < 7u) {                                  /* (1.0, a short filter: its sounds once, from the first) */
@@ -490,7 +496,7 @@ UI_SMALL static void graph_browse(void)
         }
         if (sel)
             cv_rect(4, y + 6, 3, 3, C_WHITE);
-        cv_text(14, y, &FONT_S, tag, sel ? C_GRAY : C_DIM);
+        cv_text(14, y, &FONT_S, tag, preset_fav(n) ? TE_COL[3] : sel ? C_GRAY : C_DIM);   /* a favourite: the FAV column's colour */
         cv_text(54, y, &FONT_S, nm, sel ? C_WHITE : C_GRAY);
     }
 }
@@ -1029,17 +1035,21 @@ UI_SMALL static void draw_columns(void)
         return;
     }
     if (cur_page()->graph == GR_BROWSE) {
-        uint32_t total, cur = preset_pos(&total);
+        uint32_t total, cur = preset_pos(&total), pos, c = br_count(&pos);
         char u[8];
-        fmt_int(val, (int32_t)cur + 1);
+        fmt_int(val, (int32_t)pos + 1);                  /* (1.0) the place in the list shown: the engine's sounds, (1.4)
+                                                          * the sounds without the FAV rows, or the favourites */
         str_cpy(u, "/", 8);
-        fmt_int(u + 1, (int32_t)total);
-        if (br_eng != BR_ALL) {                          /* (1.0) the place in the engine's sounds */
-            uint32_t pos, c = br_count(&pos);
-            fmt_int(val, (int32_t)pos + 1);
-            fmt_int(u + 1, (int32_t)c);
-        }
+        fmt_int(u + 1, (int32_t)c);
+        if (br_favs() && cur >= c)                      /* (on FAVS, c is how many favourites: the first c entries) */
+            str_cpy(val, "--", 12);                  /* (none yet, or the sound playing is not one of them) */
         draw_column(0, "No.", val, u, VAL(0u), -1, ICON_NONE);
+        if (br_favs()) {                                 /* (1.4) no engine filter on FAVS */
+            draw_column(1, "", "", "", C_HI, -1, ICON_AUTO);
+            draw_column(2, "", "", "", C_HI, -1, ICON_AUTO);
+            draw_column(3, "FAV", fav_has(fav_key()) ? "ON" : "--", "", VAL(3u), -1, ICON_NONE);
+            return;
+        }
         draw_column(1, "ENG", br_eng == BR_ALL ? "ALL" : br_eng == NENGINES ? "USER" : ENGINES[br_eng]->name, "", VAL(1u), -1,
                     br_eng < NENGINES ? engine_icon(ENGINES[br_eng]->name) : ICON_NONE);   /* (1.0: the filter) */
         draw_column(2, "", "", "", C_HI, -1, ICON_AUTO);
