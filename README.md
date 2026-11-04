@@ -7,7 +7,7 @@ Free and open source (GPL-3.0). It grew out of <a href="https://github.com/isod8
 
 ---
 
-> **Status: 1.3.** Clipper runs on the FM-1. 1.3 is a bug-fix release (see [New in 1.3](#new-in-13-a-bug-fix-release)); 1.2 brought SLOOP 2.8.3's fixes (see [New in 1.2](#new-in-12-sloop-283s-fixes-a-steadier-second-core-the-ewi-as-one-voice)). It passes its whole test suite on a computer. There is still a lot to do (see [What is left to do](#what-is-left-to-do)). Install it at your own risk, and keep a backup made with the editor. You can go back to the official firmware (V16 or V15) from the installer page, or to SLOOP with its own `INSTALL-SLOOP.bat`.
+> **Status: 1.3.1.** Clipper runs on the FM-1. 1.3.1 knows the newer flash chip of the FM-1 units sold recently (see [New in 1.3.1](#new-in-131-the-newer-flash-chip)); 1.3 is a bug-fix release (see [New in 1.3](#new-in-13-a-bug-fix-release)); 1.2 brought SLOOP 2.8.3's fixes (see [New in 1.2](#new-in-12-sloop-283s-fixes-a-steadier-second-core-the-ewi-as-one-voice)). It passes its whole test suite on a computer. There is still a lot to do (see [What is left to do](#what-is-left-to-do)). Install it at your own risk, and keep a backup made with the editor. You can go back to the official firmware (V16 or V15) from the installer page, or to SLOOP with its own `INSTALL-SLOOP.bat`.
 
 SLOOP is a groovebox. **Clipper is a synthesizer** with 23 engines and 407 sounds, one instrument (two in MULTI) like the original FM-1 firmware, Felucca and Baudgirl's FM-1+VA. It has no tracks, no drum machine, no song mode and no built-in samples. It keeps SLOOP's 12 sound engines, effects, arpeggiator, step sequencer, USB audio and MIDI, and adds **HYBRID**: one voice built from three oscillators, two filters and a modulation matrix, with the whole patch editable in the browser.
 
@@ -51,6 +51,10 @@ SLOOP is a groovebox. **Clipper is a synthesizer** with 23 engines and 407 sound
 **Working**: **UNDO** and **COMPARE** on the FM-1, favourites, **MORPH** between two versions of a sound, a **randomizer** by section, user presets and projects that keep everything above.
 
 **The web editor** (Chrome or Edge, nothing to install): every parameter live; a pro step sequencer (tools, generators, velocity lanes, a pattern library); the whole HYBRID and FMX patches; the MOD SEQ's lanes; the tuning and `.scl` files; DX7 banks; your own wavetables; a sound library, undo / compare / A-B / randomize tools; backups of the whole FM-1.
+
+## New in 1.3.1: the newer flash chip
+
+FM-1 units sold recently (mostly on AliExpress) carry a UC25HQ80 flash chip (JEDEC ID 0xB36014) instead of the Puya P25Q80 (0x856014): the same size, the same commands. Clipper only knew the old one, so on these units nothing was saved ("flash error": projects, presets and settings stayed in RAM) and the update loader refused to install. 1.3.1 knows both, in the firmware, the USB rescue and the update loader (`firmware/hal/fm1_flash_id.h`). Nothing else changes. Thanks to Sven (The Firmware Hub) for the heads-up.
 
 ## New in 1.3: a bug-fix release
 
