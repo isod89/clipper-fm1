@@ -843,6 +843,67 @@ int main(int argc, char **argv)
         t->p[P_AMODE] = 0; frames(2);
         set_engine_of(t, eb); apply_preset_to(t, 0); frames(2);
     }
+    /* 1.4: SAVE > FAVS (last: the audio it runs leaves the earlier measurements as they were), between USER and TOOLS: the favourites alone; KNOB 1 goes through them, KNOB 2 has no filter;
+     * a favourite's kind in the FAV column's colour, on PRESETS too; no FAV rows on PRESETS and HOME any more */
+    {
+        uint32_t total, n, k, ok = 1, b2[FAV_N], nf, pu = 0, pf = 0, pt = 0, seen = 0, prev = 0xFFFFu;
+        for (n = 0; n < NPAGES; n++) {
+            if (PAGES[n].fam != FAM_SAVE) continue;
+            if (!strcmp(PAGES[n].title, "USER")) pu = n;
+            if (!strcmp(PAGES[n].title, "FAVS")) pf = n;
+            if (!strcmp(PAGES[n].title, "TOOLS")) pt = n;
+        }
+        check(pu && pf == pu + 1u && pt == pf + 1u && PAGES[pf].graph == GR_BROWSE, "SAVE: PRESETS, USER, FAVS, TOOLS");
+        go_home(); frames(2);
+        do { open_family(FAM_SAVE); frames(1); } while (strcmp(cur_page()->title, "FAVS") && ++seen < 10u);
+        seen = 0;
+        check(br_favs() && fav_list(b2) == 0u && br_count(&n) == 0u, "FAVS with no favourites: an empty list");
+        ui.force = 1; frame(); ppm("clipper-favs-empty");
+        while (strcmp(cur_page()->title, "PRESETS")) { open_family(FAM_SAVE); frames(1); }
+        for (n = 0; n < 3u; n++) {                    /* three favourites, a few sounds apart */
+            for (k = 0; k < 5u; k++) { encs[panel.enc[EN_K1]] = 1; frames(1); }
+            fav_toggle(1); frames(1);
+        }
+        nf = fav_list(b2);
+        ok = nf == 3u;
+        for (n = 0; n < 3u; n++) ok &= preset_fav(n);  /* (the FAV rows, and each one in its kind) */
+        for (n = 0; n < nf; n++) ok &= preset_fav(nf + b2[n]);
+        for (n = 0, k = 0, preset_pos(&total); n < total; n++) k += (uint32_t)preset_fav(n);
+        ok &= k == 2u * nf;                           /* (and no other sound) */
+        check(ok, "PRESETS: a favourite is marked, in the FAV rows and in its kind");
+        n = br_count(&k);                             /* (no FAV rows on PRESETS, nor on HOME: FAVS has them) */
+        ok = n == total - nf && preset_pos(&total) >= nf && !br_match(0, nf);
+        go_home(); frames(2);
+        preset_go(nf); frames(2);                     /* (back from the first sound: round to the end, not the last FAV row
+                                                       * as before; the end is a user preset, not loaded here) */
+        encs[panel.enc[EN_PRESET]] = -1; frames(1);
+        ok &= base_pos(&total) != b2[nf - 1u];
+        preset_go(nf); frames(2);
+        encs[panel.enc[EN_PRESET]] = 1; frames(1);
+        ok &= preset_pos(&total) == nf + 1u;
+        check(ok, "PRESETS and HOME: the sounds without the FAV rows");
+        while (strcmp(cur_page()->title, "PRESETS")) { open_family(FAM_SAVE); frames(1); }
+        encs[panel.enc[EN_K1]] = 2; frames(1);       /* (a sound that is not one) */
+        while (strcmp(cur_page()->title, "FAVS")) { open_family(FAM_SAVE); frames(1); }
+        check(br_count(&n) == 3u && preset_pos(&total) >= 3u, "FAVS: three, the sound playing not among them");
+        for (n = 0; n < 5u; n++) {                    /* KNOB 1 round the favourites */
+            uint32_t p = preset_pos(&total);
+            ok &= p < 3u || n == 0u;
+            seen += p != prev;
+            prev = p;
+            encs[panel.enc[EN_K1]] = 1; frames(1);
+        }
+        check(ok && seen >= 4u && preset_pos(&total) < 3u, "FAVS: KNOB 1 goes through the favourites only");
+        n = br_eng; k = preset_pos(&total);
+        encs[panel.enc[EN_K2]] = 1; frames(1);
+        encs[panel.enc[EN_ALGO]] = 1; frames(1);
+        check(br_eng == n && preset_pos(&total) == k && br_favs() && strcmp(preset_kind(0), "FAV"),
+              "FAVS: KNOB 2 and ALGORITHM do nothing; each row shows its kind");
+        ui.force = 1; frame(); ppm("clipper-favs");
+        while (fav_list(b2)) { preset_go(0); fav_toggle(0); frames(1); }   /* (the favourites away again) */
+        go_home(); frames(2);
+        set_engine_of(TSEL, ENGI_HYBRID); apply_preset_to(TSEL, 0); frames(3);
+    }
     printf("clipper_ui: %s\n", fails ? "FAILED" : "all passed");
     return fails != 0;
 }
